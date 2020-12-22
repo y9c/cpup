@@ -134,8 +134,7 @@ public:
         << "\t"
         << "Deletecount"
         << "\t"
-        << "deletecount"
-        << "\t" << endl;
+        << "deletecount" << endl;
   }
   void print(ostream &out = cout) {
     out << chr << "\t" << pos << "\t" << depth << "\t" << ref_base << "\t"
@@ -190,13 +189,10 @@ void parse_bases_to_readcounts(mpileup_line &ml1) {
     case 'N':
       ml1.Ncount += 1;
       break;
-    // Reference skips
-    case '<':
-    case '>':
-      break;
     // This base is deleted (--reverse-del suport)
     case '*':
       ml1.Deletecount += 1;
+      break;
     case '#':
       ml1.deletecount += 1;
       break;
@@ -213,6 +209,10 @@ void parse_bases_to_readcounts(mpileup_line &ml1) {
       }
       indelsize_int = str_to_num(indelsize_string);
       i += indelsize_int - 1;
+      break;
+    // Reference skips
+    case '<':
+    case '>':
       break;
     // End of read segment
     case '$':
