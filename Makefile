@@ -4,7 +4,10 @@
 #
 
 all: cpup
-	@echo "Makefile needs your attention"
+	@echo "Done!"
 
-cpup: mpileup2readcounts.cc
-	@gcc -o $@ $<
+cpup: cpup.cpp
+	@g++ -o $@ $<
+
+test: cpup
+	@samtools mpileup -d 0 -Q 0 --reverse-del -f ./test/yeast.fa ./test/yeast.bam ./test/yeast.bam | ./$<
