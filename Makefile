@@ -7,7 +7,7 @@ all: cpup
 	@echo "Done!"
 
 cpup: cpup.cpp
-	@g++ -o $@ $<
+	@g++ -O3 -o $@ $<
 
 test: cpup
 	@samtools mpileup -d 0 -Q 0 --reverse-del -f ./test/yeast.fa ./test/yeast.bam ./test/yeast.bam | ./$<
