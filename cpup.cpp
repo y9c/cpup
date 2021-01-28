@@ -22,6 +22,16 @@ void usage() {
             << endl;
 }
 
+// global variables
+vector<string> names = {"ref",
+                        // forward strand
+                        "A", "C", "G", "T", "N", "Gap", "Insert", "Delete",
+                        // reverse strand
+                        "a", "c", "g", "t", "n", "gap", "insert", "delete"};
+
+string count_sep = ",";
+string sample_sep = "\t";
+
 // Convert a number to a string
 inline int str_to_num(string num) {
   stringstream ss;
@@ -43,7 +53,8 @@ public:
     chr = ref_base = "NA";
     depth = pos = 0;
   }
-  static void print_header(ostream &out = cout) {
+
+  static void print_header(int nsample, ostream &out = cout) {
     out << "chr"
         << "\t"
         << "pos"
@@ -51,51 +62,26 @@ public:
         << "depth"
         << "\t"
         << "ref_base"
-        << "\t"
-        << "refcount"
-        << "\t"
-        << "Acount"
-        << "\t"
-        << "Ccount"
-        << "\t"
-        << "Gcount"
-        << "\t"
-        << "Tcount"
-        << "\t"
-        << "Ncount"
-        << "\t"
-        << "Gapcount"
-        << "\t"
-        << "Insertcount"
-        << "\t"
-        << "Deletecount"
-        << "\t"
-        << "acount"
-        << "\t"
-        << "ccount"
-        << "\t"
-        << "gcount"
-        << "\t"
-        << "tcount"
-        << "\t"
-        << "ncount"
-        << "\t"
-        << "gapcount"
-        << "\t"
-        << "insertcount"
-        << "\t"
-        << "deletecount"
-        << "\t" << endl;
+        << "\t";
+    for (int i = 0; i < nsample; i++) {
+      for (const auto &n : names) {
+        out << n << count_sep;
+      }
+      out << sample_sep;
+    }
+    out << endl;
   }
+
   void print_mutation(ostream &out = cout) {
-    map<string, int> m = counts[0];
-    cout << chr << "\t" << pos << "\t" << depth << "\t" << ref_base << "\t"
-         << m["ref"] << "\t" << m["A"] << "\t" << m["C"] << "\t" << m["G"]
-         << "\t" << m["T"] << "\t" << m["N"] << "\t" << m["Gap"] << "\t"
-         << m["Insert"] << "\t" << m["Delete"] << "\t" << m["a"] << "\t"
-         << m["c"] << "\t" << m["g"] << "\t" << m["t"] << "\t" << m["n"] << "\t"
-         << m["gap"] << "\t" << m["insert"] << "\t" << m["delete"] << "\t"
-         << endl;
+    out << chr << "\t" << pos << "\t" << depth << "\t" << ref_base << "\t";
+    for (int i = 0; i < nsample; i++) {
+      map<string, int> m = counts[i];
+      for (const auto &n : names) {
+        out << m[n] << count_sep;
+      }
+      out << sample_sep;
+    }
+    out << endl;
   }
 };
 
@@ -249,7 +235,7 @@ map<string, int> adjust_counts(map<string, int> m, string &ref_base) {
 }
 
 // Split the line into the required fields and parse
-void process_mpileup_line(string line) {
+mpileup_line process_mpileup_line(string line) {
   stringstream ss(line);
   mpileup_line ml;
 
@@ -284,7 +270,7 @@ void process_mpileup_line(string line) {
   ml.nsample = nsample;
   // throw runtime_error("ERROR!");
 
-  ml.print_mutation();
+  return ml;
 }
 
 int main(int argc, char *argv[]) {
@@ -295,11 +281,22 @@ int main(int argc, char *argv[]) {
     }
   }
   string line;
-  mpileup_line::print_header();
   getline(cin, line);
+
+  // print header
+  try {
+    mpileup_line ml = process_mpileup_line(line);
+    mpileup_line::print_header(ml.nsample);
+  } catch (const std::runtime_error &e) {
+    cerr << e.what() << endl;
+    cerr << "\nError parsing line " << line;
+  }
+
+  // parse and print each line
   while (cin) {
     try {
-      process_mpileup_line(line);
+      mpileup_line ml = process_mpileup_line(line);
+      ml.print_mutation();
     } catch (const std::runtime_error &e) {
       cerr << e.what() << endl;
       cerr << "\nError parsing line " << line;
