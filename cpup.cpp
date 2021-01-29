@@ -27,6 +27,7 @@ vector<string> names = {
     "depth",
     "ref",
     // forward strand
+    //"fwd",
     "A",
     "C",
     "G",
@@ -36,6 +37,7 @@ vector<string> names = {
     "Insert",
     "Delete",
     // reverse strand
+    //"rev",
     "a",
     "c",
     "g",
@@ -84,7 +86,9 @@ class mpileup_line {
           out << count_sep;
         }
       }
-      out << sample_sep;
+      if (i < nsample - 1) {
+        out << sample_sep;
+      }
     }
     out << endl;
   }
@@ -99,7 +103,9 @@ class mpileup_line {
           out << count_sep;
         }
       }
-      out << sample_sep;
+      if (i < nsample - 1) {
+        out << sample_sep;
+      }
     }
     out << endl;
   }
