@@ -121,6 +121,10 @@ map<string, int> parse_counts(string& bases, string& qual, int depth) {
       {"Insert", 0},    {"insert", 0}, {"Delete", 0}, {"delete", 0},
   };
 
+  // check if site is a empty (depth == 0)
+  if (bases == "*") {
+    return m;
+  }
   for (int i = 0; i < bases.length(); i++) {
     char base = bases[i];
     string indelsize_string;
