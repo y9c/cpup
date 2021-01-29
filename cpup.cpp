@@ -24,6 +24,7 @@ void usage() {
 
 // global variables
 vector<string> names = {
+    "depth",
     "ref",
     // forward strand
     "A",
@@ -59,22 +60,20 @@ inline int str_to_num(string num) {
 // DS to hold the pertinent information
 class mpileup_line {
  public:
-  int pos, depth, nsample;
+  int pos, nsample;
   string chr, ref_base;
   // Counts for different bases
   vector<map<string, int>> counts;
 
   mpileup_line() {
     chr = ref_base = "NA";
-    depth = pos = 0;
+    pos = 0;
   }
 
   static void print_header(int nsample, ostream& out = cout) {
     out << "chr"
         << "\t"
         << "pos"
-        << "\t"
-        << "depth"
         << "\t"
         << "ref_base"
         << "\t";
@@ -91,7 +90,7 @@ class mpileup_line {
   }
 
   void print_mutation(ostream& out = cout) {
-    out << chr << "\t" << pos << "\t" << depth << "\t" << ref_base << "\t";
+    out << chr << "\t" << pos << "\t" << ref_base << "\t";
     for (int i = 0; i < nsample; i++) {
       map<string, int> m = counts[i];
       for (int j = 0; j < names.size(); j++) {
@@ -109,10 +108,11 @@ class mpileup_line {
 // Parse the pileup string
 map<string, int> parse_counts(string& bases, string& qual, int depth) {
   map<string, int> m{
-      {"ref", 0},    {"fwd", 0},    {"rev", 0},    {"A", 0},      {"a", 0},
-      {"C", 0},      {"c", 0},      {"G", 0},      {"g", 0},      {"T", 0},
-      {"t", 0},      {"N", 0},      {"n", 0},      {"Gap", 0},    {"gap", 0},
-      {"Insert", 0}, {"insert", 0}, {"Delete", 0}, {"delete", 0},
+      {"depth", depth}, {"ref", 0},    {"fwd", 0},    {"rev", 0},
+      {"A", 0},         {"a", 0},      {"C", 0},      {"c", 0},
+      {"G", 0},         {"g", 0},      {"T", 0},      {"t", 0},
+      {"N", 0},         {"n", 0},      {"Gap", 0},    {"gap", 0},
+      {"Insert", 0},    {"insert", 0}, {"Delete", 0}, {"delete", 0},
   };
 
   for (int i = 0; i < bases.length(); i++) {
