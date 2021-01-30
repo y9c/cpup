@@ -15,11 +15,11 @@
 using namespace std;
 
 void usage() {
-  std::cerr << "Usage: "
-            << "samtools mpileup -d 0 -Q 0 --reverse-del "
-               "-f <.fa> <.bam> "
-               "| cpup"
-            << endl;
+  std::cerr
+      << "Usage: " << endl
+      << "  samtools mpileup -d 0 -Q 0 --reverse-del -l <.bed> -f <.fa> <.bam>"
+         " | cpup"
+      << endl;
 }
 
 // global variables
