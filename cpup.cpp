@@ -10,6 +10,7 @@
 #include <map>
 #include <sstream>
 #include <stdexcept>
+#include <tuple>
 #include <vector>
 
 using namespace std;
@@ -48,6 +49,7 @@ vector<string> names = {
     "delete"};
 
 string count_sep = ",";
+string indel_sep = "|";
 string sample_sep = "\t";
 
 // Convert a number to a string
@@ -65,14 +67,15 @@ class mpileup_line {
   int pos, nsample;
   string chr, ref_base;
   // Counts for different bases
-  vector<map<string, int>> counts;
+  vector<map<string, int>> counts, istats, dstats;
 
   mpileup_line() {
     chr = ref_base = "NA";
     pos = 0;
   }
 
-  static void print_header(int nsample, ostream& out = cout) {
+  static void
+  print_header(int nsample, ostream& out = cout, bool stat_indel = false) {
     out << "chr"
         << "\t"
         << "pos"
@@ -89,13 +92,18 @@ class mpileup_line {
       if (i < nsample - 1) {
         out << sample_sep;
       }
+      if (stat_indel) {
+        out << count_sep << "istat";
+        out << count_sep << "istat";
+      }
     }
     out << endl;
   }
 
-  void print_mutation(ostream& out = cout) {
+  void print_counter(ostream& out = cout, bool stat_indel = false) {
     out << chr << "\t" << pos << "\t" << ref_base << "\t";
     for (int i = 0; i < nsample; i++) {
+      // count
       map<string, int> m = counts[i];
       for (int j = 0; j < names.size(); j++) {
         out << m[names[j]];
@@ -103,6 +111,29 @@ class mpileup_line {
           out << count_sep;
         }
       }
+      if (stat_indel) {
+        // istat
+        map<string, int> istat = istats[i];
+        out << count_sep;
+        for (auto iter = istat.begin(); iter != istat.end(); ++iter) {
+          if (std::next(iter) != istat.end()) {
+            out << iter->first << ':' << iter->second << indel_sep;
+          } else {
+            out << iter->first << ':' << iter->second;
+          }
+        }
+        // dstat
+        map<string, int> dstat = dstats[i];
+        out << count_sep;
+        for (auto iter = dstat.begin(); iter != dstat.end(); ++iter) {
+          if (std::next(iter) != dstat.end()) {
+            out << iter->first << ':' << iter->second << indel_sep;
+          } else {
+            out << iter->first << ':' << iter->second;
+          }
+        }
+      }
+      // end
       if (i < nsample - 1) {
         out << sample_sep;
       }
@@ -112,7 +143,8 @@ class mpileup_line {
 };
 
 // Parse the pileup string
-map<string, int> parse_counts(string& bases, string& qual, int depth) {
+tuple<map<string, int>, map<string, int>, map<string, int>>
+parse_counts(string& bases, string& qual, int depth) {
   map<string, int> m{
       {"depth", depth}, {"ref", 0},    {"fwd", 0},    {"rev", 0},
       {"A", 0},         {"a", 0},      {"C", 0},      {"c", 0},
@@ -120,14 +152,17 @@ map<string, int> parse_counts(string& bases, string& qual, int depth) {
       {"N", 0},         {"n", 0},      {"Gap", 0},    {"gap", 0},
       {"Insert", 0},    {"insert", 0}, {"Delete", 0}, {"delete", 0},
   };
+  map<string, int> istat;
+  map<string, int> dstat;
 
   // check if site is a empty (depth == 0)
   if (bases == "*") {
-    return m;
+    return make_tuple(m, istat, dstat);
   }
   for (int i = 0; i < bases.length(); i++) {
     char base = bases[i];
     string indelsize_string;
+    string indelseq;
     int indelsize_int = 0;
     switch (base) {
       // Match to reference
@@ -189,6 +224,9 @@ map<string, int> parse_counts(string& bases, string& qual, int depth) {
           m["insert"] += 1;
         }
         indelsize_int = str_to_num(indelsize_string);
+        // stat_indel
+        indelseq = bases.substr(i, indelsize_int);
+        istat[indelseq]++;
         i += indelsize_int - 1;
         break;
       // Deletion
@@ -205,6 +243,9 @@ map<string, int> parse_counts(string& bases, string& qual, int depth) {
           m["delete"] += 1;
         }
         indelsize_int = str_to_num(indelsize_string);
+        // stat_indel
+        indelseq = bases.substr(i, indelsize_int);
+        dstat[indelseq]++;
         i += indelsize_int - 1;
         break;
       // Reference skips
@@ -227,7 +268,7 @@ map<string, int> parse_counts(string& bases, string& qual, int depth) {
 
   m["ref"] = m["fwd"] + m["rev"];
 
-  return m;
+  return make_tuple(m, istat, dstat);
 }
 
 // Set the appropriate count for ref nucleotide
@@ -292,23 +333,28 @@ mpileup_line process_mpileup_line(string line) {
       getline(ss, bases, '\t');
       // get quals
       getline(ss, quals, '\t');
-      ml.counts.push_back(
-          adjust_counts(parse_counts(bases, quals, depth), ml.ref_base));
+
+      map<string, int> m, istat, dstat;
+      tie(m, istat, dstat) = parse_counts(bases, quals, depth);
+      ml.counts.push_back(adjust_counts(m, ml.ref_base));
+      ml.istats.push_back(istat);
+      ml.dstats.push_back(dstat);
       nsample++;
     }
     ncol++;
   }
   ml.nsample = nsample;
-  // throw runtime_error("ERROR!");
-
   return ml;
 }
 
 int main(int argc, char* argv[]) {
+  bool stat_indel = false;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
       usage();
       return 0;
+    } else if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indel")) {
+      stat_indel = true;
     }
   }
   string line;
@@ -317,7 +363,7 @@ int main(int argc, char* argv[]) {
   // print header
   try {
     mpileup_line ml = process_mpileup_line(line);
-    mpileup_line::print_header(ml.nsample);
+    mpileup_line::print_header(ml.nsample, cout, stat_indel);
   } catch (const std::runtime_error& e) {
     cerr << e.what() << endl;
     cerr << "\nError parsing line " << line;
@@ -327,7 +373,7 @@ int main(int argc, char* argv[]) {
   while (cin) {
     try {
       mpileup_line ml = process_mpileup_line(line);
-      ml.print_mutation();
+      ml.print_counter(cout, stat_indel);
     } catch (const std::runtime_error& e) {
       cerr << e.what() << endl;
       cerr << "\nError parsing line " << line;

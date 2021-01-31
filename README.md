@@ -2,6 +2,8 @@
 
 - convert samtools mpileup result into base count tsv
 - multiple bam files are supported
+- `bcftools mpileup` might a better choice, if you are not confusing with tags
+  (`-t AD`, `-t ADF`, `-t ADR`).
 
 `samtools mpileup` can mpileup the mapping result site by site in the format
 below. The 5th (8th, 11st, 14th, ...) column report the observed bases in each site.
@@ -26,6 +28,8 @@ XII     455425  A       18,4,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0    4,2,0,0,0,0,0,0,
 XII     455426  A       18,4,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0    4,2,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0
 XII     455427  A       20,6,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0    4,2,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0
 ```
+
+`cpup -d` to append indel count in base count sequence.
 
 ## Install
 
