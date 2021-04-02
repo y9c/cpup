@@ -407,6 +407,7 @@ int main(int argc, char* argv[]) {
   while (cin) {
     try {
       mpileup_line ml = process_mpileup_line(line);
+      // filter minimum mutation number
       bool is_passed_min_mut = false;
       for (int i = 0; i < ml.nsample; i++) {
         if (ml.counts[i]["mut"] >= min_mut) {
@@ -414,17 +415,17 @@ int main(int argc, char* argv[]) {
           break;
         }
       }
+      // filter minimum un-mutatated number
       bool is_passed_min_ref = false;
       for (int i = 0; i < ml.nsample; i++) {
-        if (ml.counts[i]["ref"] >= min_mut) {
-          is_passed_min_mut = true;
+        if (ml.counts[i]["ref"] >= min_ref) {
+          is_passed_min_ref = true;
           break;
         }
       }
       if (is_passed_min_mut && is_passed_min_ref) {
         ml.print_counter(cout, stat_indel);
       }
-
     } catch (const std::runtime_error& e) {
       cerr << e.what() << endl;
       cerr << "\nError parsing line " << line;
