@@ -416,6 +416,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < ml.nsample; i++) {
           if (ml.counts[i][filter_name] >= min_cutoff) {
             filters_results[filter_name] = true;
+            cerr << filter_name << ":" << filters_results[filter_name];
             break;
           }
         }
