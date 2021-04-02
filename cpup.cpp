@@ -369,8 +369,8 @@ vector<string> split_string(const string& i_str, const string& i_delim) {
 
 int main(int argc, char* argv[]) {
   bool stat_indel = false;
+  map<string, bool> filters_results;
   map<string, int> min_cutoffs;
-  map<string, bool> min_filters;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
       usage();
@@ -386,7 +386,7 @@ int main(int argc, char* argv[]) {
           string filter_name = filter[0];
           int min_cutoff = std::stoi(filter[1]);
           min_cutoffs[filter_name] = min_cutoff;
-          min_filters[filter_name] = false;
+          filters_results[filter_name] = false;
         }
       }
       i++;
@@ -409,17 +409,17 @@ int main(int argc, char* argv[]) {
   while (cin) {
     try {
       mpileup_line ml = process_mpileup_line(line);
-      bool is_passed;
+      bool is_passed = true;
       for (auto iter = min_cutoffs.begin(); iter != min_cutoffs.end(); ++iter) {
         string filter_name = iter->first;
         int min_cutoff = iter->second;
         for (int i = 0; i < ml.nsample; i++) {
           if (ml.counts[i][filter_name] >= min_cutoff) {
-            min_filters[filter_name] = true;
+            filters_results[filter_name] = true;
             break;
           }
         }
-        is_passed = is_passed && min_filters[filter_name];
+        is_passed = is_passed && filters_results[filter_name];
       }
       if (is_passed) {
         ml.print_counter(cout, stat_indel);
