@@ -146,11 +146,12 @@ class mpileup_line {
 tuple<map<string, int>, map<string, int>, map<string, int>>
 parse_counts(string& bases, string& qual, int depth) {
   map<string, int> m{
-      {"depth", depth}, {"ref", 0}, {"mut", 0},    {"fwd", 0},    {"rev", 0},
-      {"A", 0},         {"a", 0},   {"C", 0},      {"c", 0},      {"G", 0},
-      {"g", 0},         {"T", 0},   {"t", 0},      {"N", 0},      {"n", 0},
-      {"Gap", 0},       {"gap", 0}, {"Insert", 0}, {"insert", 0}, {"Delete", 0},
-      {"delete", 0},
+      {"depth", depth}, {"coverage", 0}, {"ref", 0},    {"mut", 0},
+      {"fwd", 0},       {"rev", 0},      {"A", 0},      {"a", 0},
+      {"C", 0},         {"c", 0},        {"G", 0},      {"g", 0},
+      {"T", 0},         {"t", 0},        {"N", 0},      {"n", 0},
+      {"Gap", 0},       {"gap", 0},      {"Insert", 0}, {"insert", 0},
+      {"Delete", 0},    {"delete", 0},
   };
   map<string, int> istat;
   map<string, int> dstat;
@@ -267,8 +268,9 @@ parse_counts(string& bases, string& qual, int depth) {
   }
 
   m["ref"] = m["fwd"] + m["rev"];
-  m["mut"] = m["A"] + m["a"] + m["C"] + m["c"] + m["G"] + m["g"] + m["T"] +
-             m["t"] + m["Gap"] + m["gap"];
+  m["mut"] =
+      m["A"] + m["a"] + m["C"] + m["c"] + m["G"] + m["g"] + m["T"] + m["t"];
+  m["coverage"] = m["ref"] + m["mut"];
 
   return make_tuple(m, istat, dstat);
 }
@@ -367,9 +369,8 @@ vector<string> split_string(const string& i_str, const string& i_delim) {
 
 int main(int argc, char* argv[]) {
   bool stat_indel = false;
-  int min_mut = 0;
-  int min_ref = 0;
-  vector<string> filters;
+  map<string, int> min_cutoffs;
+  map<string, bool> min_filters;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
       usage();
@@ -378,13 +379,14 @@ int main(int argc, char* argv[]) {
       stat_indel = true;
     } else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--filter")) {
       if (i + 1 != argc) {
-        filters = split_string(argv[i + 1], ",");
-        for (auto filter = filters.begin(); filter != filters.end(); ++filter) {
-          if (filter->rfind("M", 0) == 0) {
-            min_mut = std::stoi(filter->substr(1));
-          } else if (filter->rfind("R", 0) == 0) {
-            min_ref = std::stoi(filter->substr(1));
-          }
+        vector<string> filters = split_string(argv[i + 1], ",");
+        for (auto& s : filters) {
+          vector<string> filter = split_string(s, ":");
+          // mut, ref, coverage
+          string filter_name = filter[0];
+          int min_cutoff = std::stoi(filter[1]);
+          min_cutoffs[filter_name] = min_cutoff;
+          min_filters[filter_name] = false;
         }
       }
       i++;
@@ -407,23 +409,19 @@ int main(int argc, char* argv[]) {
   while (cin) {
     try {
       mpileup_line ml = process_mpileup_line(line);
-      // filter minimum mutation number
-      bool is_passed_min_mut = false;
-      for (int i = 0; i < ml.nsample; i++) {
-        if (ml.counts[i]["mut"] >= min_mut) {
-          is_passed_min_mut = true;
-          break;
+      bool is_passed;
+      for (auto iter = min_cutoffs.begin(); iter != min_cutoffs.end(); ++iter) {
+        string filter_name = iter->first;
+        int min_cutoff = iter->second;
+        for (int i = 0; i < ml.nsample; i++) {
+          if (ml.counts[i][filter_name] >= min_cutoff) {
+            min_filters[filter_name] = true;
+            break;
+          }
         }
+        is_passed = is_passed && min_filters[filter_name];
       }
-      // filter minimum un-mutatated number
-      bool is_passed_min_ref = false;
-      for (int i = 0; i < ml.nsample; i++) {
-        if (ml.counts[i]["ref"] >= min_ref) {
-          is_passed_min_ref = true;
-          break;
-        }
-      }
-      if (is_passed_min_mut && is_passed_min_ref) {
+      if (is_passed) {
         ml.print_counter(cout, stat_indel);
       }
     } catch (const std::runtime_error& e) {
