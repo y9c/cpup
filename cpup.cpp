@@ -416,7 +416,7 @@ int main(int argc, char* argv[]) {
       }
       bool is_passed_min_ref = false;
       for (int i = 0; i < ml.nsample; i++) {
-        if (ml.counts[i][""] >= min_mut) {
+        if (ml.counts[i]["ref"] >= min_mut) {
           is_passed_min_mut = true;
           break;
         }
