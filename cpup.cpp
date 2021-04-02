@@ -369,7 +369,6 @@ vector<string> split_string(const string& i_str, const string& i_delim) {
 
 int main(int argc, char* argv[]) {
   bool stat_indel = false;
-  map<string, bool> filters_results;
   map<string, int> min_cutoffs;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
@@ -386,7 +385,6 @@ int main(int argc, char* argv[]) {
           string filter_name = filter[0];
           int min_cutoff = std::stoi(filter[1]);
           min_cutoffs[filter_name] = min_cutoff;
-          filters_results[filter_name] = false;
         }
       }
       i++;
@@ -409,14 +407,15 @@ int main(int argc, char* argv[]) {
   while (cin) {
     try {
       mpileup_line ml = process_mpileup_line(line);
+      map<string, bool> filters_results;
       bool is_passed = true;
       for (auto iter = min_cutoffs.begin(); iter != min_cutoffs.end(); ++iter) {
         string filter_name = iter->first;
         int min_cutoff = iter->second;
+        filters_results[filter_name] = false;
         for (int i = 0; i < ml.nsample; i++) {
           if (ml.counts[i][filter_name] >= min_cutoff) {
             filters_results[filter_name] = true;
-            cerr << filter_name << ":" << filters_results[filter_name];
             break;
           }
         }
