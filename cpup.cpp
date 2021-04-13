@@ -369,11 +369,14 @@ vector<string> split_string(const string& i_str, const string& i_delim) {
 
 int main(int argc, char* argv[]) {
   bool stat_indel = false;
+  bool show_header = false;
   map<string, int> min_cutoffs;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
       usage();
       return 0;
+    } else if (!strcmp(argv[i], "-H") || !strcmp(argv[i], "--header")) {
+      show_header = true;
     } else if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indel")) {
       stat_indel = true;
     } else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--filter")) {
@@ -395,12 +398,14 @@ int main(int argc, char* argv[]) {
   getline(cin, line);
 
   // print header
-  try {
-    mpileup_line ml = process_mpileup_line(line);
-    mpileup_line::print_header(ml.nsample, cout, stat_indel);
-  } catch (const std::runtime_error& e) {
-    cerr << e.what() << endl;
-    cerr << "\nError parsing line " << line;
+  if (show_header) {
+    try {
+      mpileup_line ml = process_mpileup_line(line);
+      mpileup_line::print_header(ml.nsample, cout, stat_indel);
+    } catch (const std::runtime_error& e) {
+      cerr << e.what() << endl;
+      cerr << "\nError parsing line " << line;
+    }
   }
 
   // parse and print each line
