@@ -147,11 +147,11 @@ tuple<map<string, int>, map<string, int>, map<string, int>>
 parse_counts(string& bases, string& qual, int depth) {
   map<string, int> m{
       {"depth", depth}, {"coverage", 0}, {"ref", 0},    {"mut", 0},
-      {"fwd", 0},       {"rev", 0},      {"A", 0},      {"a", 0},
-      {"C", 0},         {"c", 0},        {"G", 0},      {"g", 0},
-      {"T", 0},         {"t", 0},        {"N", 0},      {"n", 0},
-      {"Gap", 0},       {"gap", 0},      {"Insert", 0}, {"insert", 0},
-      {"Delete", 0},    {"delete", 0},
+      {"Gap+gap", 0},   {"fwd", 0},      {"rev", 0},    {"A", 0},
+      {"a", 0},         {"C", 0},        {"c", 0},      {"G", 0},
+      {"g", 0},         {"T", 0},        {"t", 0},      {"N", 0},
+      {"n", 0},         {"Gap", 0},      {"gap", 0},    {"Insert", 0},
+      {"insert", 0},    {"Delete", 0},   {"delete", 0},
   };
   map<string, int> istat;
   map<string, int> dstat;
@@ -270,6 +270,7 @@ parse_counts(string& bases, string& qual, int depth) {
   m["ref"] = m["fwd"] + m["rev"];
   m["mut"] =
       m["A"] + m["a"] + m["C"] + m["c"] + m["G"] + m["g"] + m["T"] + m["t"];
+  m["Gap+gap"] = m["Gap"] + m["gap"];
   m["coverage"] = m["ref"] + m["mut"];
 
   return make_tuple(m, istat, dstat);
@@ -384,7 +385,8 @@ int main(int argc, char* argv[]) {
         vector<string> filters = split_string(argv[i + 1], ",");
         for (auto& s : filters) {
           vector<string> filter = split_string(s, ":");
-          // mut, ref, coverage
+          // mut, ref, coverage, ...
+          // Gap + gap is a special key
           string filter_name = filter[0];
           int min_cutoff = std::stoi(filter[1]);
           min_cutoffs[filter_name] = min_cutoff;
