@@ -89,12 +89,12 @@ class mpileup_line {
           out << count_sep;
         }
       }
-      if (i < nsample - 1) {
-        out << sample_sep;
-      }
       if (stat_indel) {
         out << count_sep << "istat";
-        out << count_sep << "istat";
+        out << count_sep << "dstat";
+      }
+      if (i < nsample - 1) {
+        out << sample_sep;
       }
     }
     out << endl;
