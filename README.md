@@ -29,7 +29,9 @@ XII     455426  A       18,4,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0    4,2,0,0,0,0,0,0,
 XII     455427  A       20,6,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0    4,2,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0
 ```
 
-`cpup -d` to append indel count in base count sequence.
+- `cpup -H` to hide header.
+- `cpup -i` to append indel count in base count sequence.
+- `cpup -f` to filter sites.
 
 ## Install
 
