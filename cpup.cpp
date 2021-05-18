@@ -165,21 +165,65 @@ class mpileup_line {
         // istat
         map<string, int> istat = istats[i];
         out << count_sep;
-        for (auto iter = istat.begin(); iter != istat.end(); ++iter) {
-          if (std::next(iter) != istat.end()) {
-            out << iter->first << ':' << iter->second << indel_sep;
-          } else {
-            out << iter->first << ':' << iter->second;
+        if (hide_strand) {
+          map<string, int> istat_no_strand;
+          for (auto iter = istat.begin(); iter != istat.end(); ++iter) {
+            string motif = iter->first;
+            std::transform(
+                motif.begin(),
+                motif.end(),
+                motif.begin(),
+                [](unsigned char c) { return ::toupper(c); });
+            istat_no_strand[motif] += iter->second;
+          }
+          for (auto iter = istat_no_strand.begin();
+               iter != istat_no_strand.end();
+               ++iter) {
+            if (std::next(iter) != istat_no_strand.end()) {
+              out << iter->first << ':' << iter->second << indel_sep;
+            } else {
+              out << iter->first << ':' << iter->second;
+            }
+          }
+        } else {
+          for (auto iter = istat.begin(); iter != istat.end(); ++iter) {
+            if (std::next(iter) != istat.end()) {
+              out << iter->first << ':' << iter->second << indel_sep;
+            } else {
+              out << iter->first << ':' << iter->second;
+            }
           }
         }
         // dstat
         map<string, int> dstat = dstats[i];
         out << count_sep;
-        for (auto iter = dstat.begin(); iter != dstat.end(); ++iter) {
-          if (std::next(iter) != dstat.end()) {
-            out << iter->first << ':' << iter->second << indel_sep;
-          } else {
-            out << iter->first << ':' << iter->second;
+        if (hide_strand) {
+          map<string, int> dstat_no_strand;
+          for (auto iter = dstat.begin(); iter != dstat.end(); ++iter) {
+            string motif = iter->first;
+            std::transform(
+                motif.begin(),
+                motif.end(),
+                motif.begin(),
+                [](unsigned char c) { return ::toupper(c); });
+            dstat_no_strand[motif] += iter->second;
+          }
+          for (auto iter = dstat_no_strand.begin();
+               iter != dstat_no_strand.end();
+               ++iter) {
+            if (std::next(iter) != dstat_no_strand.end()) {
+              out << iter->first << ':' << iter->second << indel_sep;
+            } else {
+              out << iter->first << ':' << iter->second;
+            }
+          }
+        } else {
+          for (auto iter = dstat.begin(); iter != dstat.end(); ++iter) {
+            if (std::next(iter) != dstat.end()) {
+              out << iter->first << ':' << iter->second << indel_sep;
+            } else {
+              out << iter->first << ':' << iter->second;
+            }
           }
         }
       }
