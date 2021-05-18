@@ -5,11 +5,14 @@
  * Distributed under terms of the MIT license.
  */
 
+#include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -48,6 +51,18 @@ vector<string> names = {
     "insert",
     "delete"};
 
+vector<string> names_no_strand = {
+    "depth",
+    //"ref",
+    "A",
+    "C",
+    "G",
+    "T",
+    "N",
+    "Gap",
+    "Insert",
+    "Delete"};
+
 string count_sep = ",";
 string indel_sep = "|";
 string sample_sep = "\t";
@@ -74,8 +89,11 @@ class mpileup_line {
     pos = 0;
   }
 
-  static void
-  print_header(int nsample, ostream& out = cout, bool stat_indel = false) {
+  static void print_header(
+      int nsample,
+      ostream& out = cout,
+      bool stat_indel = false,
+      bool hide_strand = false) {
     out << "chr"
         << "\t"
         << "pos"
@@ -83,10 +101,19 @@ class mpileup_line {
         << "ref_base"
         << "\t";
     for (int i = 0; i < nsample; i++) {
-      for (int j = 0; j < names.size(); j++) {
-        out << names[j];
-        if (j < names.size() - 1) {
-          out << count_sep;
+      if (!hide_strand) {
+        for (int j = 0; j < names.size(); j++) {
+          out << names[j];
+          if (j < names.size() - 1) {
+            out << count_sep;
+          }
+        }
+      } else {
+        for (int j = 0; j < names_no_strand.size(); j++) {
+          out << names_no_strand[j];
+          if (j < names_no_strand.size() - 1) {
+            out << count_sep;
+          }
         }
       }
       if (stat_indel) {
@@ -100,15 +127,38 @@ class mpileup_line {
     out << endl;
   }
 
-  void print_counter(ostream& out = cout, bool stat_indel = false) {
+  void print_counter(
+      ostream& out = cout,
+      bool stat_indel = false,
+      bool hide_strand = false) {
     out << chr << "\t" << pos << "\t" << ref_base << "\t";
     for (int i = 0; i < nsample; i++) {
       // count
       map<string, int> m = counts[i];
-      for (int j = 0; j < names.size(); j++) {
-        out << m[names[j]];
-        if (j < names.size() - 1) {
-          out << count_sep;
+      if (!hide_strand) {
+        for (int j = 0; j < names.size(); j++) {
+          out << m[names[j]];
+          if (j < names.size() - 1) {
+            out << count_sep;
+          }
+        }
+      } else {
+        for (int j = 0; j < names_no_strand.size(); j++) {
+          string name1 = names_no_strand[j];
+          string name2 = name1;
+          std::transform(
+              name2.begin(),
+              name2.end(),
+              name2.begin(),
+              [](unsigned char c) { return ::tolower(c); });
+          if (name2 == "depth") {
+            out << m[name1];
+          } else {
+            out << m[name1] + m[name2];
+          }
+          if (j < names_no_strand.size() - 1) {
+            out << count_sep;
+          }
         }
       }
       if (stat_indel) {
@@ -369,15 +419,18 @@ vector<string> split_string(const string& i_str, const string& i_delim) {
 }
 
 int main(int argc, char* argv[]) {
+  bool hide_header = false;
+  bool hide_strand = false;
   bool stat_indel = false;
-  bool show_header = false;
   map<string, int> min_cutoffs;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
       usage();
       return 0;
     } else if (!strcmp(argv[i], "-H") || !strcmp(argv[i], "--header")) {
-      show_header = true;
+      hide_header = true;
+    } else if (!strcmp(argv[i], "-S") || !strcmp(argv[i], "--strandless")) {
+      hide_strand = true;
     } else if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indel")) {
       stat_indel = true;
     } else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--filter")) {
@@ -400,10 +453,10 @@ int main(int argc, char* argv[]) {
   getline(cin, line);
 
   // print header
-  if (show_header) {
+  if (!hide_header) {
     try {
       mpileup_line ml = process_mpileup_line(line);
-      mpileup_line::print_header(ml.nsample, cout, stat_indel);
+      mpileup_line::print_header(ml.nsample, cout, stat_indel, hide_strand);
     } catch (const std::runtime_error& e) {
       cerr << e.what() << endl;
       cerr << "\nError parsing line " << line;
@@ -429,7 +482,7 @@ int main(int argc, char* argv[]) {
         is_passed = is_passed && filters_results[filter_name];
       }
       if (is_passed) {
-        ml.print_counter(cout, stat_indel);
+        ml.print_counter(cout, stat_indel, hide_strand);
       }
     } catch (const std::runtime_error& e) {
       cerr << e.what() << endl;
