@@ -18,6 +18,26 @@
 
 using namespace std;
 
+static const unsigned char basemap[256] = {
+    0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,
+    15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
+    30,  31,  32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,  43,  44,
+    45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,
+    60,  61,  62,  63,  64,  'T', 'V', 'G', 'H', 'E', 'F', 'C', 'D', 'I', 'J',
+    'M', 'L', 'K', 'N', 'O', 'P', 'Q', 'Y', 'S', 'A', 'A', 'B', 'W', 'X', 'R',
+    'Z', 91,  92,  93,  94,  95,  96,  't', 'v', 'g', 'h', 'e', 'f', 'c', 'd',
+    'i', 'j', 'm', 'l', 'k', 'n', 'o', 'p', 'q', 'y', 's', 'a', 'a', 'b', 'w',
+    'x', 'r', 'z', 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134,
+    135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149,
+    150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164,
+    165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179,
+    180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194,
+    195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209,
+    210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224,
+    225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
+    240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254,
+    255};
+
 void usage() {
   std::cerr
       << "Usage: " << endl
@@ -27,41 +47,9 @@ void usage() {
 }
 
 // global variables
-vector<string> names = {
-    "depth",
-    //"ref",
-    // forward strand
-    //"fwd",
-    "A",
-    "C",
-    "G",
-    "T",
-    "N",
-    "Gap",
-    "Insert",
-    "Delete",
-    // reverse strand
-    //"rev",
-    "a",
-    "c",
-    "g",
-    "t",
-    "n",
-    "gap",
-    "insert",
-    "delete"};
-
-vector<string> names_no_strand = {
-    "depth",
-    //"ref",
-    "A",
-    "C",
-    "G",
-    "T",
-    "N",
-    "Gap",
-    "Insert",
-    "Delete"};
+vector<string> names = {"a", "c", "g", "t", "n", "gap", "insert", "delete"};
+vector<string> names_upper =
+    {"A", "C", "G", "T", "N", "Gap", "Insert", "Delete"};
 
 string count_sep = ",";
 string indel_sep = "|";
@@ -82,7 +70,8 @@ class mpileup_line {
   int pos, nsample;
   string chr, ref_base;
   // Counts for different bases
-  vector<map<string, int>> counts, istats, dstats;
+  vector<map<string, int>> Counts, counts, Istats, istats, Dstats, dstats;
+  vector<int> depths;
 
   mpileup_line() {
     chr = ref_base = "NA";
@@ -93,28 +82,25 @@ class mpileup_line {
       int nsample,
       ostream& out = cout,
       bool stat_indel = false,
-      bool hide_strand = false) {
-    out << "chr"
-        << "\t"
-        << "pos"
-        << "\t"
-        << "ref_base"
-        << "\t";
+      bool hide_strand = false,
+      bool by_strand = false) {
+    out << "chr" << sample_sep << "pos" << sample_sep << "ref_base";
+    if (by_strand) {
+      out << sample_sep << "strand";
+    }
     for (int i = 0; i < nsample; i++) {
-      if (!hide_strand) {
-        for (int j = 0; j < names.size(); j++) {
-          out << names[j];
-          if (j < names.size() - 1) {
-            out << count_sep;
-          }
+      out << sample_sep << "depth";
+      if (!hide_strand && !by_strand) {
+        for (int j = 0; j < names_upper.size(); j++) {
+          out << count_sep << names_upper[j];
         }
-      } else {
-        for (int j = 0; j < names_no_strand.size(); j++) {
-          out << names_no_strand[j];
-          if (j < names_no_strand.size() - 1) {
-            out << count_sep;
-          }
+        if (stat_indel) {
+          out << count_sep << "Istat";
+          out << count_sep << "Dstat";
         }
+      }
+      for (int j = 0; j < names.size(); j++) {
+        out << count_sep << names[j];
       }
       if (stat_indel) {
         out << count_sep << "istat";
@@ -130,129 +116,197 @@ class mpileup_line {
   void print_counter(
       ostream& out = cout,
       bool stat_indel = false,
-      bool hide_strand = false) {
-    out << chr << "\t" << pos << "\t" << ref_base << "\t";
-    for (int i = 0; i < nsample; i++) {
-      // count
-      map<string, int> m = counts[i];
-      if (!hide_strand) {
+      bool hide_strand = false,
+      bool by_strand = false) {
+    if (by_strand) {
+      // forward
+      out << chr << sample_sep << pos << sample_sep << ref_base << sample_sep
+          << "+";
+      for (int i = 0; i < nsample; i++) {
+        map<string, int> M = Counts[i];
+        out << sample_sep << depths[i];
         for (int j = 0; j < names.size(); j++) {
-          out << m[names[j]];
-          if (j < names.size() - 1) {
+          out << count_sep << M[names[j]];
+        }
+        // indel stat
+        if (stat_indel) {
+          vector<map<string, int>> indel_stats = {Istats[i], Dstats[i]};
+          for (auto ids : indel_stats) {
             out << count_sep;
+            for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
+              if (std::next(iter) != ids.end()) {
+                out << iter->first << ':' << iter->second << indel_sep;
+              } else {
+                out << iter->first << ':' << iter->second;
+              }
+            }
           }
         }
-      } else {
-        for (int j = 0; j < names_no_strand.size(); j++) {
-          string name1 = names_no_strand[j];
-          string name2 = name1;
-          std::transform(
-              name2.begin(),
-              name2.end(),
-              name2.begin(),
-              [](unsigned char c) { return ::tolower(c); });
-          if (name2 == "depth") {
-            out << m[name1];
-          } else {
-            out << m[name1] + m[name2];
-          }
-          if (j < names_no_strand.size() - 1) {
+      }
+      out << endl;
+      // reverse
+      // TODO: complement the ref_base
+      out << chr << sample_sep << pos << sample_sep << basemap[ref_base[0]]
+          << sample_sep << "-";
+      for (int i = 0; i < nsample; i++) {
+        map<string, int> m = counts[i];
+        out << sample_sep << depths[i];
+        for (int j = 0; j < names.size(); j++) {
+          out << count_sep << m[names[j]];
+        }
+        // indel stat
+        if (stat_indel) {
+          vector<map<string, int>> indel_stats = {istats[i], dstats[i]};
+          for (auto ids : indel_stats) {
             out << count_sep;
-          }
-        }
-      }
-      if (stat_indel) {
-        // istat
-        map<string, int> istat = istats[i];
-        out << count_sep;
-        if (hide_strand) {
-          map<string, int> istat_no_strand;
-          for (auto iter = istat.begin(); iter != istat.end(); ++iter) {
-            string motif = iter->first;
-            std::transform(
-                motif.begin(),
-                motif.end(),
-                motif.begin(),
-                [](unsigned char c) { return ::toupper(c); });
-            istat_no_strand[motif] += iter->second;
-          }
-          for (auto iter = istat_no_strand.begin();
-               iter != istat_no_strand.end();
-               ++iter) {
-            if (std::next(iter) != istat_no_strand.end()) {
-              out << iter->first << ':' << iter->second << indel_sep;
-            } else {
-              out << iter->first << ':' << iter->second;
-            }
-          }
-        } else {
-          for (auto iter = istat.begin(); iter != istat.end(); ++iter) {
-            if (std::next(iter) != istat.end()) {
-              out << iter->first << ':' << iter->second << indel_sep;
-            } else {
-              out << iter->first << ':' << iter->second;
-            }
-          }
-        }
-        // dstat
-        map<string, int> dstat = dstats[i];
-        out << count_sep;
-        if (hide_strand) {
-          map<string, int> dstat_no_strand;
-          for (auto iter = dstat.begin(); iter != dstat.end(); ++iter) {
-            string motif = iter->first;
-            std::transform(
-                motif.begin(),
-                motif.end(),
-                motif.begin(),
-                [](unsigned char c) { return ::toupper(c); });
-            dstat_no_strand[motif] += iter->second;
-          }
-          for (auto iter = dstat_no_strand.begin();
-               iter != dstat_no_strand.end();
-               ++iter) {
-            if (std::next(iter) != dstat_no_strand.end()) {
-              out << iter->first << ':' << iter->second << indel_sep;
-            } else {
-              out << iter->first << ':' << iter->second;
-            }
-          }
-        } else {
-          for (auto iter = dstat.begin(); iter != dstat.end(); ++iter) {
-            if (std::next(iter) != dstat.end()) {
-              out << iter->first << ':' << iter->second << indel_sep;
-            } else {
-              out << iter->first << ':' << iter->second;
+            for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
+              if (std::next(iter) != ids.end()) {
+                out << iter->first << ':' << iter->second << indel_sep;
+              } else {
+                out << iter->first << ':' << iter->second;
+              }
             }
           }
         }
       }
-      // end
-      if (i < nsample - 1) {
-        out << sample_sep;
+      out << endl;
+    }  // end by_strand
+
+    else if (hide_strand) {
+      out << chr << sample_sep << pos << sample_sep << ref_base;
+      for (int i = 0; i < nsample; i++) {
+        map<string, int> M = Counts[i];
+        map<string, int> m = counts[i];
+        out << sample_sep << depths[i];
+        for (int j = 0; j < names.size(); j++) {
+          out << count_sep << M[names[j]] + m[names[j]];
+        }
+        // indel stat
+        if (stat_indel) {
+          vector<map<string, int>> indel_stats = {
+              Istats[i],
+              istats[i],
+              Dstats[i],
+              dstats[i]};
+          for (auto ids : indel_stats) {
+            map<string, int> ids_no_strand;
+            for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
+              string motif = iter->first;
+              std::transform(
+                  motif.begin(),
+                  motif.end(),
+                  motif.begin(),
+                  [](unsigned char c) { return ::toupper(c); });
+              ids_no_strand[motif] += iter->second;
+            }
+            out << count_sep;
+            for (auto iter = ids_no_strand.begin(); iter != ids_no_strand.end();
+                 ++iter) {
+              if (std::next(iter) != ids_no_strand.end()) {
+                out << iter->first << ':' << iter->second << indel_sep;
+              } else {
+                out << iter->first << ':' << iter->second;
+              }
+            }
+          }
+        }
       }
-    }
-    out << endl;
+      out << endl;
+    }  // end by_strand
+
+    else {
+      out << chr << sample_sep << pos << sample_sep << ref_base;
+      for (int i = 0; i < nsample; i++) {
+        out << sample_sep << depths[i];
+        map<string, int> M = Counts[i];
+        for (int j = 0; j < names.size(); j++) {
+          out << count_sep << M[names[j]];
+        }
+        // indel stat
+        if (stat_indel) {
+          vector<map<string, int>> indel_stats = {Istats[i], Dstats[i]};
+          for (auto ids : indel_stats) {
+            out << count_sep;
+            for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
+              if (std::next(iter) != ids.end()) {
+                out << iter->first << ':' << iter->second << indel_sep;
+              } else {
+                out << iter->first << ':' << iter->second;
+              }
+            }
+          }
+        }
+        map<string, int> m = counts[i];
+        for (int j = 0; j < names.size(); j++) {
+          out << count_sep << m[names[j]];
+        }
+        // indel stat
+        if (stat_indel) {
+          vector<map<string, int>> indel_stats = {istats[i], dstats[i]};
+          for (auto ids : indel_stats) {
+            out << count_sep;
+            for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
+              if (std::next(iter) != ids.end()) {
+                out << iter->first << ':' << iter->second << indel_sep;
+              } else {
+                out << iter->first << ':' << iter->second;
+              }
+            }
+          }
+        }
+      }
+      out << endl;
+    }  // end
   }
 };
 
 // Parse the pileup string
-tuple<map<string, int>, map<string, int>, map<string, int>>
-parse_counts(string& bases, string& qual, int depth) {
+tuple<
+    map<string, int>,
+    map<string, int>,
+    map<string, int>,
+    map<string, int>,
+    map<string, int>,
+    map<string, int>>
+parse_counts(string& bases, string& qual) {
+  // forward strand
+  map<string, int> M{
+      {"coverage", 0},
+      {"ref", 0},
+      {"mut", 0},
+      {"gap", 0},
+      {"a", 0},
+      {"c", 0},
+      {"g", 0},
+      {"t", 0},
+      {"n", 0},
+      {"gap", 0},
+      {"insert", 0},
+      {"delete", 0},
+  };
+  // reverse strand
   map<string, int> m{
-      {"depth", depth}, {"coverage", 0}, {"ref", 0},    {"mut", 0},
-      {"Gap+gap", 0},   {"fwd", 0},      {"rev", 0},    {"A", 0},
-      {"a", 0},         {"C", 0},        {"c", 0},      {"G", 0},
-      {"g", 0},         {"T", 0},        {"t", 0},      {"N", 0},
-      {"n", 0},         {"Gap", 0},      {"gap", 0},    {"Insert", 0},
-      {"insert", 0},    {"Delete", 0},   {"delete", 0},
+      {"coverage", 0},
+      {"ref", 0},
+      {"mut", 0},
+      {"gap", 0},
+      {"a", 0},
+      {"c", 0},
+      {"g", 0},
+      {"t", 0},
+      {"n", 0},
+      {"gap", 0},
+      {"insert", 0},
+      {"delete", 0},
   };
   map<string, int> istat;
   map<string, int> dstat;
+  map<string, int> Istat;
+  map<string, int> Dstat;
 
   // check if site is a empty (depth == 0)
   if (bases == "*") {
-    return make_tuple(m, istat, dstat);
+    return make_tuple(M, m, Istat, istat, Dstat, dstat);
   }
   for (int i = 0; i < bases.length(); i++) {
     char base = bases[i];
@@ -262,45 +316,45 @@ parse_counts(string& bases, string& qual, int depth) {
     switch (base) {
       // Match to reference
       case '.':
-        m["fwd"] += 1;
+        M["ref"] += 1;
         break;
       case ',':
-        m["rev"] += 1;
+        m["ref"] += 1;
+        break;
+      case 'A':
+        M["a"] += 1;
         break;
       case 'a':
         m["a"] += 1;
         break;
-      case 'A':
-        m["A"] += 1;
+      case 'C':
+        M["c"] += 1;
         break;
       case 'c':
         m["c"] += 1;
         break;
-      case 'C':
-        m["C"] += 1;
+      case 'G':
+        M["g"] += 1;
         break;
       case 'g':
         m["g"] += 1;
         break;
-      case 'G':
-        m["G"] += 1;
+      case 'T':
+        M["t"] += 1;
         break;
       case 't':
-        m["t"] += 1;
-        break;
-      case 'T':
         m["T"] += 1;
         break;
-      case 'n':
-        m["n"] += 1;
-        break;
       case 'N':
+        M["n"] += 1;
+        break;
+      case 'n':
         m["N"] += 1;
         break;
       // This base is a gap (--reverse-del suport)
       // similar with Deletecount and deletecount, but with some difference
       case '*':
-        m["Gap"] += 1;
+        M["gap"] += 1;
         break;
       case '#':
         m["gap"] += 1;
@@ -313,15 +367,15 @@ parse_counts(string& bases, string& qual, int depth) {
           indelsize_string = indelsize_string + bases[i];
           i = i + 1;
         }
+        indelsize_int = str_to_num(indelsize_string);
+        indelseq = bases.substr(i, indelsize_int);
         if (isupper(bases[i])) {
-          m["Insert"] += 1;
+          M["insert"] += 1;
+          Istat[indelseq]++;
         } else {
           m["insert"] += 1;
+          istat[indelseq]++;
         }
-        indelsize_int = str_to_num(indelsize_string);
-        // stat_indel
-        indelseq = bases.substr(i, indelsize_int);
-        istat[indelseq]++;
         i += indelsize_int - 1;
         break;
       // Deletion
@@ -332,15 +386,15 @@ parse_counts(string& bases, string& qual, int depth) {
           indelsize_string = indelsize_string + bases[i];
           i = i + 1;
         }
+        indelsize_int = str_to_num(indelsize_string);
+        indelseq = bases.substr(i, indelsize_int);
         if (isupper(bases[i])) {
-          m["Delete"] += 1;
+          M["delete"] += 1;
+          Dstat[indelseq]++;
         } else {
           m["delete"] += 1;
+          dstat[indelseq]++;
         }
-        indelsize_int = str_to_num(indelsize_string);
-        // stat_indel
-        indelseq = bases.substr(i, indelsize_int);
-        dstat[indelseq]++;
         i += indelsize_int - 1;
         break;
       // Reference skips
@@ -361,13 +415,10 @@ parse_counts(string& bases, string& qual, int depth) {
     }
   }
 
-  m["ref"] = m["fwd"] + m["rev"];
-  m["mut"] =
-      m["A"] + m["a"] + m["C"] + m["c"] + m["G"] + m["g"] + m["T"] + m["t"];
-  m["Gap+gap"] = m["Gap"] + m["gap"];
+  m["mut"] = m["a"] + m["c"] + m["g"] + m["t"];
   m["coverage"] = m["ref"] + m["mut"];
 
-  return make_tuple(m, istat, dstat);
+  return make_tuple(M, m, Istat, istat, Dstat, dstat);
 }
 
 // Set the appropriate count for ref nucleotide
@@ -433,10 +484,14 @@ mpileup_line process_mpileup_line(string line) {
       // get quals
       getline(ss, quals, '\t');
 
-      map<string, int> m, istat, dstat;
-      tie(m, istat, dstat) = parse_counts(bases, quals, depth);
+      map<string, int> M, m, Istat, istat, Dstat, dstat;
+      tie(M, m, Istat, istat, Dstat, dstat) = parse_counts(bases, quals);
+      ml.depths.push_back(depth);
+      ml.Counts.push_back(adjust_counts(M, ml.ref_base));
       ml.counts.push_back(adjust_counts(m, ml.ref_base));
+      ml.Istats.push_back(Istat);
       ml.istats.push_back(istat);
+      ml.Dstats.push_back(Dstat);
       ml.dstats.push_back(dstat);
       nsample++;
     }
@@ -465,16 +520,25 @@ vector<string> split_string(const string& i_str, const string& i_delim) {
 int main(int argc, char* argv[]) {
   bool hide_header = false;
   bool hide_strand = false;
+  bool by_strand = false;
   bool stat_indel = false;
   map<string, int> min_cutoffs;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
       usage();
       return 0;
-    } else if (!strcmp(argv[i], "-H") || !strcmp(argv[i], "--header")) {
+    } else if (!strcmp(argv[i], "-H") || !strcmp(argv[i], "--headerless")) {
       hide_header = true;
     } else if (!strcmp(argv[i], "-S") || !strcmp(argv[i], "--strandless")) {
       hide_strand = true;
+    } else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--by-strand")) {
+      if (hide_strand) {
+        cerr << "\nCan not use the `--by_strand` parameter together with the "
+                "`--strandless` parameter"
+             << endl;
+        break;
+      }
+      by_strand = true;
     } else if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indel")) {
       stat_indel = true;
     } else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--filter")) {
@@ -500,7 +564,12 @@ int main(int argc, char* argv[]) {
   if (!hide_header) {
     try {
       mpileup_line ml = process_mpileup_line(line);
-      mpileup_line::print_header(ml.nsample, cout, stat_indel, hide_strand);
+      mpileup_line::print_header(
+          ml.nsample,
+          cout,
+          stat_indel,
+          hide_strand,
+          by_strand);
     } catch (const std::runtime_error& e) {
       cerr << e.what() << endl;
       cerr << "\nError parsing line " << line;
@@ -526,7 +595,7 @@ int main(int argc, char* argv[]) {
         is_passed = is_passed && filters_results[filter_name];
       }
       if (is_passed) {
-        ml.print_counter(cout, stat_indel, hide_strand);
+        ml.print_counter(cout, stat_indel, hide_strand, by_strand);
       }
     } catch (const std::runtime_error& e) {
       cerr << e.what() << endl;
