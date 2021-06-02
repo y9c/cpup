@@ -120,59 +120,61 @@ class mpileup_line {
       bool by_strand = false,
       char strands = '*') {
     // forward strand
-    if (by_strand && (strands == '*' || strands == '+')) {
-      out << chr << sample_sep << pos << sample_sep << ref_base << sample_sep
-          << "+";
-      for (int i = 0; i < nsample; i++) {
-        map<string, int> M = Counts[i];
-        out << sample_sep << depths[i];
-        for (int j = 0; j < names.size(); j++) {
-          out << count_sep << M[names[j]];
-        }
-        // indel stat
-        if (stat_indel) {
-          vector<map<string, int>> indel_stats = {Istats[i], Dstats[i]};
-          for (auto ids : indel_stats) {
-            out << count_sep;
-            for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
-              if (std::next(iter) != ids.end()) {
-                out << iter->first << ':' << iter->second << indel_sep;
-              } else {
-                out << iter->first << ':' << iter->second;
+    if (by_strand) {
+      if (strands == '*' || strands == '+') {
+        out << chr << sample_sep << pos << sample_sep << ref_base << sample_sep
+            << "+";
+        for (int i = 0; i < nsample; i++) {
+          map<string, int> M = Counts[i];
+          out << sample_sep << depths[i];
+          for (int j = 0; j < names.size(); j++) {
+            out << count_sep << M[names[j]];
+          }
+          // indel stat
+          if (stat_indel) {
+            vector<map<string, int>> indel_stats = {Istats[i], Dstats[i]};
+            for (auto ids : indel_stats) {
+              out << count_sep;
+              for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
+                if (std::next(iter) != ids.end()) {
+                  out << iter->first << ':' << iter->second << indel_sep;
+                } else {
+                  out << iter->first << ':' << iter->second;
+                }
               }
             }
           }
         }
+        out << endl;
       }
-      out << endl;
-    }
-    // reverse strand
-    if (by_strand && (strands == '*' || strands == '-')) {
-      // TODO: complement the ref_base
-      out << chr << sample_sep << pos << sample_sep << basemap[ref_base[0]]
-          << sample_sep << "-";
-      for (int i = 0; i < nsample; i++) {
-        map<string, int> m = counts[i];
-        out << sample_sep << depths[i];
-        for (int j = 0; j < names.size(); j++) {
-          out << count_sep << m[names[j]];
-        }
-        // indel stat
-        if (stat_indel) {
-          vector<map<string, int>> indel_stats = {istats[i], dstats[i]};
-          for (auto ids : indel_stats) {
-            out << count_sep;
-            for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
-              if (std::next(iter) != ids.end()) {
-                out << iter->first << ':' << iter->second << indel_sep;
-              } else {
-                out << iter->first << ':' << iter->second;
+      // reverse strand
+      if (strands == '*' || strands == '-') {
+        // TODO: complement the ref_base
+        out << chr << sample_sep << pos << sample_sep << basemap[ref_base[0]]
+            << sample_sep << "-";
+        for (int i = 0; i < nsample; i++) {
+          map<string, int> m = counts[i];
+          out << sample_sep << depths[i];
+          for (int j = 0; j < names.size(); j++) {
+            out << count_sep << m[names[j]];
+          }
+          // indel stat
+          if (stat_indel) {
+            vector<map<string, int>> indel_stats = {istats[i], dstats[i]};
+            for (auto ids : indel_stats) {
+              out << count_sep;
+              for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
+                if (std::next(iter) != ids.end()) {
+                  out << iter->first << ':' << iter->second << indel_sep;
+                } else {
+                  out << iter->first << ':' << iter->second;
+                }
               }
             }
           }
         }
+        out << endl;
       }
-      out << endl;
     }  // end by_strand
 
     else if (hide_strand) {
