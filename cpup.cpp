@@ -117,9 +117,10 @@ class mpileup_line {
       ostream& out = cout,
       bool stat_indel = false,
       bool hide_strand = false,
-      bool by_strand = false) {
-    if (by_strand) {
-      // forward
+      bool by_strand = false,
+      char strands = '*') {
+    // forward strand
+    if (by_strand && (strands == '*' || strands == '+')) {
       out << chr << sample_sep << pos << sample_sep << ref_base << sample_sep
           << "+";
       for (int i = 0; i < nsample; i++) {
@@ -144,7 +145,9 @@ class mpileup_line {
         }
       }
       out << endl;
-      // reverse
+    }
+    // reverse strand
+    if (by_strand && (strands == '*' || strands == '-')) {
       // TODO: complement the ref_base
       out << chr << sample_sep << pos << sample_sep << basemap[ref_base[0]]
           << sample_sep << "-";
@@ -546,8 +549,7 @@ int main(int argc, char* argv[]) {
         vector<string> filters = split_string(argv[i + 1], ",");
         for (auto& s : filters) {
           vector<string> filter = split_string(s, ":");
-          // mut, ref, coverage, ...
-          // Gap + gap is a special key
+          // mut, ref, coverage, gap...
           string filter_name = filter[0];
           int min_cutoff = std::stoi(filter[1]);
           min_cutoffs[filter_name] = min_cutoff;
@@ -580,22 +582,56 @@ int main(int argc, char* argv[]) {
   while (cin) {
     try {
       mpileup_line ml = process_mpileup_line(line);
-      map<string, bool> filters_results;
-      bool is_passed = true;
-      for (auto iter = min_cutoffs.begin(); iter != min_cutoffs.end(); ++iter) {
-        string filter_name = iter->first;
-        int min_cutoff = iter->second;
-        filters_results[filter_name] = false;
-        for (int i = 0; i < ml.nsample; i++) {
-          if (ml.counts[i][filter_name] >= min_cutoff) {
-            filters_results[filter_name] = true;
-            break;
+      if (by_strand) {
+        vector<bool> is_passed = {true, true};
+        for (auto iter = min_cutoffs.begin(); iter != min_cutoffs.end();
+             ++iter) {
+          bool filters_result_fwd = false;
+          bool filters_result_rev = false;
+          string filter_name = iter->first;
+          int min_cutoff = iter->second;
+          for (int i = 0; i < ml.nsample; i++) {
+            if (ml.Counts[i][filter_name] >= min_cutoff) {
+              filters_result_fwd = true;
+              break;
+            }
           }
+          for (int i = 0; i < ml.nsample; i++) {
+            if (ml.counts[i][filter_name] >= min_cutoff) {
+              filters_result_rev = true;
+              break;
+            }
+          }
+          is_passed[0] = is_passed[0] && filters_result_fwd;
+          is_passed[1] = is_passed[1] && filters_result_rev;
         }
-        is_passed = is_passed && filters_results[filter_name];
-      }
-      if (is_passed) {
-        ml.print_counter(cout, stat_indel, hide_strand, by_strand);
+
+        if (is_passed[0] and is_passed[1]) {
+          ml.print_counter(cout, stat_indel, hide_strand, by_strand, '*');
+        } else if (is_passed[0] and !is_passed[1]) {
+          ml.print_counter(cout, stat_indel, hide_strand, by_strand, '+');
+        } else if (!is_passed[0] and is_passed[1]) {
+          ml.print_counter(cout, stat_indel, hide_strand, by_strand, '-');
+        }
+      } else {
+        bool are_passed = true;
+        for (auto iter = min_cutoffs.begin(); iter != min_cutoffs.end();
+             ++iter) {
+          bool filters_result = false;
+          string filter_name = iter->first;
+          int min_cutoff = iter->second;
+          for (int i = 0; i < ml.nsample; i++) {
+            if (ml.Counts[i][filter_name] + ml.counts[i][filter_name] >=
+                min_cutoff) {
+              filters_result = true;
+              break;
+            }
+          }
+          are_passed = are_passed && filters_result;
+        }
+        if (are_passed) {
+          ml.print_counter(cout, stat_indel, hide_strand, by_strand);
+        }
       }
     } catch (const std::runtime_error& e) {
       cerr << e.what() << endl;
