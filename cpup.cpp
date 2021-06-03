@@ -43,7 +43,14 @@ void usage() {
       << "Usage: " << endl
       << "  samtools mpileup -d 0 -Q 0 --reverse-del -l <.bed> -f <.fa> <.bam>"
          " | cpup"
-      << endl;
+      << endl
+      << endl
+      << "  -h, --help          show help" << endl
+      << "  -H, --headerless    hide header" << endl
+      << "  -S  --strandless    ignore strand information" << endl
+      << "  -s  --by-strand     output by strand" << endl
+      << "  -i  --indel         append indel count" << endl
+      << "  -f  --filter        filter sites" << endl;
 }
 
 // global variables
