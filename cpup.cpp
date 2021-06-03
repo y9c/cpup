@@ -149,7 +149,6 @@ class mpileup_line {
       }
       // reverse strand
       if (strands == '*' || strands == '-') {
-        // TODO: complement the ref_base
         out << chr << sample_sep << pos << sample_sep << basemap[ref_base[0]]
             << sample_sep << "-";
         for (int i = 0; i < nsample; i++) {
@@ -538,10 +537,11 @@ int main(int argc, char* argv[]) {
       hide_strand = true;
     } else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--by-strand")) {
       if (hide_strand) {
-        cerr << "\nCan not use the `--by_strand` parameter together with the "
-                "`--strandless` parameter"
+        cerr << "\n"
+                "Can not use the `--by_strand (-s)` parameter together with "
+                "the `--strandless (-S)` parameter"
              << endl;
-        break;
+        return 1;
       }
       by_strand = true;
     } else if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indel")) {
