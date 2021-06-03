@@ -30,13 +30,9 @@ XII     455496  C       -       1409,17,0,0,0,0,2,0,2,,c:1|caa:1        139,3,0,
 XII     455498  T       -       1454,0,6,2,0,0,407,0,244,,at:220|att:24 144,0,0,1,0,0,37,0,27,,at:23|att:4
 XII     455499  T       -       1496,0,1,12,0,0,250,0,12,,t:7|tt:5      151,0,0,2,0,0,29,0,1,,t:1
 XII     455500  A       -       1455,0,2,2,0,0,256,0,0,,        145,0,1,0,0,0,28,0,0,,
+XII     729179  T       +       223,0,3,0,0,0,33,0,0,,  56,0,0,0,0,0,14,0,0,,
+XII     729182  C       +       235,1,0,0,4,0,2,0,0,,   56,0,0,0,0,0,1,0,0,,
 ```
-
-- `cpup -H` to hide header.
-- `cpup -S` to ignore strand information.
-- `cpup -s` to output by strand.
-- `cpup -i` to append indel count in base count sequence.
-- `cpup -f` to filter sites.
 
 ## Install
 
@@ -51,6 +47,12 @@ linux pipeline:
 ```bash
 samtools mpileup -d 0 -Q 0 --reverse-del -l <.bed> -f <.fa> <.bam> | cpup
 ```
+
+- `cpup -H` to hide header.
+- `cpup -S` to ignore strand information.
+- `cpup -s` to output by strand.
+- `cpup -i` to append indel count in base count sequence.
+- `cpup -f` to filter sites.
 
 ## Q&A?
 

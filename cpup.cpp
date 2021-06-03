@@ -47,10 +47,10 @@ void usage() {
       << endl
       << "  -h, --help          show help" << endl
       << "  -H, --headerless    hide header" << endl
-      << "  -S  --strandless    ignore strand information" << endl
-      << "  -s  --by-strand     output by strand" << endl
-      << "  -i  --indel         append indel count" << endl
-      << "  -f  --filter        filter sites" << endl;
+      << "  -S, --strandless    ignore strand information" << endl
+      << "  -s, --by-strand     output by strand" << endl
+      << "  -i, --indel         append indel count" << endl
+      << "  -f, --filter        filter sites" << endl;
 }
 
 // global variables
@@ -425,6 +425,9 @@ parse_counts(string& bases, string& qual) {
         throw runtime_error(err);
     }
   }
+
+  M["mut"] = M["a"] + M["c"] + M["g"] + M["t"];
+  M["coverage"] = M["ref"] + M["mut"];
 
   m["mut"] = m["a"] + m["c"] + m["g"] + m["t"];
   m["coverage"] = m["ref"] + m["mut"];
