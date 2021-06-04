@@ -533,9 +533,10 @@ vector<string> split_string(const string& i_str, const string& i_delim) {
 
 int main(int argc, char* argv[]) {
   bool hide_header = false;
+  bool stat_indel = false;
   bool hide_strand = false;
   bool by_strand = false;
-  bool stat_indel = false;
+  bool major_strand = false;
   map<string, int> min_cutoffs;
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
@@ -543,19 +544,14 @@ int main(int argc, char* argv[]) {
       return 0;
     } else if (!strcmp(argv[i], "-H") || !strcmp(argv[i], "--headerless")) {
       hide_header = true;
+    } else if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indel")) {
+      stat_indel = true;
     } else if (!strcmp(argv[i], "-S") || !strcmp(argv[i], "--strandless")) {
       hide_strand = true;
     } else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--by-strand")) {
-      if (hide_strand) {
-        cerr << "\n"
-                "Can not use the `--by_strand (-s)` parameter together with "
-                "the `--strandless (-S)` parameter"
-             << endl;
-        return 1;
-      }
       by_strand = true;
-    } else if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indel")) {
-      stat_indel = true;
+    } else if (!strcmp(argv[i], "-m") || !strcmp(argv[i], "--major-strand")) {
+      major_strand = true;
     } else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--filter")) {
       if (i + 1 != argc) {
         vector<string> filters = split_string(argv[i + 1], ",");
@@ -569,6 +565,21 @@ int main(int argc, char* argv[]) {
       }
       i++;
     }
+  }
+
+  if (by_strand and hide_strand) {
+    cerr << "\n"
+            "Can not use the `--by_strand (-s)` parameter together with "
+            "the `--strandless (-S)` parameter"
+         << endl;
+    return 1;
+  }
+  if (!by_strand and major_strand) {
+    cerr << "\n"
+            "The `--major-strand (-m)` parameter must be used together with "
+            "the `--by-strand (-s)` parameter"
+         << endl;
+    return 1;
   }
 
   string line;
@@ -617,7 +628,20 @@ int main(int argc, char* argv[]) {
           is_passed[0] = is_passed[0] && filters_result_fwd;
           is_passed[1] = is_passed[1] && filters_result_rev;
         }
-
+        // drop minor strand
+        if (major_strand) {
+          int coverage_fwd = 0;
+          int coverage_rev = 0;
+          for (int i = 0; i < ml.nsample; i++) {
+            coverage_fwd += ml.Counts[i]["coverage"];
+            coverage_rev += ml.counts[i]["coverage"];
+          }
+          if (coverage_fwd > coverage_rev) {
+            is_passed[1] = false;
+          } else if (coverage_fwd < coverage_rev) {
+            is_passed[0] = false;
+          }
+        }
         if (is_passed[0] and is_passed[1]) {
           ml.print_counter(cout, stat_indel, hide_strand, by_strand, '*');
         } else if (is_passed[0] and !is_passed[1]) {
