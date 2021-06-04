@@ -38,6 +38,24 @@ static const unsigned char basemap[256] = {
     240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254,
     255};
 
+// Switch the counts for complement bases
+map<string, int> switch_complement_counts(map<string, int> m) {
+  map<string, int> m2{
+      {"coverage", m["coverage"]},
+      {"ref", m["ref"]},
+      {"mut", m["mut"]},
+      {"a", m["t"]},
+      {"c", m["g"]},
+      {"g", m["c"]},
+      {"t", m["a"]},
+      {"n", m["n"]},
+      {"gap", m["gap"]},
+      {"insert", m["insert"]},
+      {"delete", m["delete"]},
+  };
+  return m2;
+}
+
 void usage() {
   std::cerr
       << "Usage: " << endl
@@ -133,7 +151,8 @@ class mpileup_line {
             << "+";
         for (int i = 0; i < nsample; i++) {
           map<string, int> M = Counts[i];
-          out << sample_sep << depths[i];
+          // out << sample_sep << depths[i];
+          out << sample_sep << M["coverage"];
           for (int j = 0; j < names.size(); j++) {
             out << count_sep << M[names[j]];
           }
@@ -159,8 +178,9 @@ class mpileup_line {
         out << chr << sample_sep << pos << sample_sep << basemap[ref_base[0]]
             << sample_sep << "-";
         for (int i = 0; i < nsample; i++) {
-          map<string, int> m = counts[i];
-          out << sample_sep << depths[i];
+          map<string, int> m = switch_complement_counts(counts[i]);
+          // out << sample_sep << depths[i];
+          out << sample_sep << m["coverage"];
           for (int j = 0; j < names.size(); j++) {
             out << count_sep << m[names[j]];
           }
@@ -285,7 +305,6 @@ parse_counts(string& bases, string& qual) {
       {"coverage", 0},
       {"ref", 0},
       {"mut", 0},
-      {"gap", 0},
       {"a", 0},
       {"c", 0},
       {"g", 0},
@@ -300,7 +319,6 @@ parse_counts(string& bases, string& qual) {
       {"coverage", 0},
       {"ref", 0},
       {"mut", 0},
-      {"gap", 0},
       {"a", 0},
       {"c", 0},
       {"g", 0},
@@ -354,13 +372,13 @@ parse_counts(string& bases, string& qual) {
         M["t"] += 1;
         break;
       case 't':
-        m["T"] += 1;
+        m["t"] += 1;
         break;
       case 'N':
         M["n"] += 1;
         break;
       case 'n':
-        m["N"] += 1;
+        m["n"] += 1;
         break;
       // This base is a gap (--reverse-del suport)
       // similar with Deletecount and deletecount, but with some difference
@@ -436,34 +454,29 @@ parse_counts(string& bases, string& qual) {
 }
 
 // Set the appropriate count for ref nucleotide
-map<string, int> adjust_counts(map<string, int> m, string& ref_base) {
+map<string, int> fix_ref_counts(map<string, int> m, string& ref_base) {
   switch (ref_base[0]) {
     case 'A':
     case 'a':
-      m["A"] = m["fwd"];
-      m["a"] = m["rev"];
+      m["a"] = m["ref"];
       break;
     case 'C':
     case 'c':
-      m["C"] = m["fwd"];
-      m["c"] = m["rev"];
+      m["c"] = m["ref"];
       break;
     case 'G':
     case 'g':
-      m["G"] = m["fwd"];
-      m["g"] = m["rev"];
+      m["g"] = m["ref"];
       break;
     case 'T':
     case 't':
-      m["T"] = m["fwd"];
-      m["t"] = m["rev"];
+      m["t"] = m["ref"];
       break;
     case 'N':
     case 'n':
-      m["N"] = m["fwd"];
-      m["n"] = m["rev"];
+      m["n"] = m["ref"];
       break;
-    // Deal with -,R,Y,K,M,S,W etc
+    // TODO: Deal with -,R,Y,K,M,S,W etc
     default:
       break;
   }
@@ -498,11 +511,14 @@ mpileup_line process_mpileup_line(string line) {
       // get quals
       getline(ss, quals, '\t');
 
-      map<string, int> M, m, Istat, istat, Dstat, dstat;
-      tie(M, m, Istat, istat, Dstat, dstat) = parse_counts(bases, quals);
+      map<string, int> Count, count, Istat, istat, Dstat, dstat;
+      tie(Count, count, Istat, istat, Dstat, dstat) =
+          parse_counts(bases, quals);
+      Count = fix_ref_counts(Count, ml.ref_base);
+      count = fix_ref_counts(count, ml.ref_base);
       ml.depths.push_back(depth);
-      ml.Counts.push_back(adjust_counts(M, ml.ref_base));
-      ml.counts.push_back(adjust_counts(m, ml.ref_base));
+      ml.Counts.push_back(Count);
+      ml.counts.push_back(count);
       ml.Istats.push_back(Istat);
       ml.istats.push_back(istat);
       ml.Dstats.push_back(Dstat);
