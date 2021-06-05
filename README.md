@@ -52,7 +52,8 @@ samtools mpileup -d 0 -Q 0 --reverse-del -l <.bed> -f <.fa> <.bam> | cpup
 - `cpup -S` to ignore strand information.
 - `cpup -s` to output by strand.
 - `cpup -i` to append indel count in base count sequence.
-- `cpup -f` to filter sites.
+- `cpup -f` to check any (max) value greater than cutoff.
+- `cpup -F` to check all (min) value greater than cutoff.
 
 ## Q&A?
 

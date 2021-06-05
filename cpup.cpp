@@ -68,7 +68,8 @@ void usage() {
       << "  -S, --strandless    ignore strand information" << endl
       << "  -s, --by-strand     output by strand" << endl
       << "  -i, --indel         append indel count" << endl
-      << "  -f, --filter        filter sites" << endl;
+      << "  -f, --filter        filter sites" << endl
+      << "  -F, --drop          drop sites" << endl;
 }
 
 // global variables
@@ -553,7 +554,8 @@ int main(int argc, char* argv[]) {
   bool hide_strand = false;
   bool by_strand = false;
   bool major_strand = false;
-  map<string, int> min_cutoffs;
+  map<string, int> any_cutoffs;  // check any (max) value greater than cutoff
+  map<string, int> all_cutoffs;  // check all (min) value greater than cutoff
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
       usage();
@@ -569,6 +571,7 @@ int main(int argc, char* argv[]) {
     } else if (!strcmp(argv[i], "-m") || !strcmp(argv[i], "--major-strand")) {
       major_strand = true;
     } else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--filter")) {
+      // Select when any match
       if (i + 1 != argc) {
         vector<string> filters = split_string(argv[i + 1], ",");
         for (auto& s : filters) {
@@ -576,7 +579,20 @@ int main(int argc, char* argv[]) {
           // mut, ref, coverage, gap...
           string filter_name = filter[0];
           int min_cutoff = std::stoi(filter[1]);
-          min_cutoffs[filter_name] = min_cutoff;
+          any_cutoffs[filter_name] = min_cutoff;
+        }
+      }
+      i++;
+    } else if (!strcmp(argv[i], "-F") || !strcmp(argv[i], "--drop")) {
+      // Drop when all match
+      if (i + 1 != argc) {
+        vector<string> filters = split_string(argv[i + 1], ",");
+        for (auto& s : filters) {
+          vector<string> filter = split_string(s, ":");
+          // mut, ref, coverage, gap...
+          string filter_name = filter[0];
+          int min_cutoff = std::stoi(filter[1]);
+          all_cutoffs[filter_name] = min_cutoff;
         }
       }
       i++;
@@ -623,7 +639,7 @@ int main(int argc, char* argv[]) {
       mpileup_line ml = process_mpileup_line(line);
       if (by_strand) {
         vector<bool> is_passed = {true, true};
-        for (auto iter = min_cutoffs.begin(); iter != min_cutoffs.end();
+        for (auto iter = any_cutoffs.begin(); iter != any_cutoffs.end();
              ++iter) {
           bool filters_result_fwd = false;
           bool filters_result_rev = false;
@@ -638,6 +654,27 @@ int main(int argc, char* argv[]) {
           for (int i = 0; i < ml.nsample; i++) {
             if (ml.counts[i][filter_name] >= min_cutoff) {
               filters_result_rev = true;
+              break;
+            }
+          }
+          is_passed[0] = is_passed[0] && filters_result_fwd;
+          is_passed[1] = is_passed[1] && filters_result_rev;
+        }
+        for (auto iter = all_cutoffs.begin(); iter != all_cutoffs.end();
+             ++iter) {
+          bool filters_result_fwd = true;
+          bool filters_result_rev = true;
+          string filter_name = iter->first;
+          int min_cutoff = iter->second;
+          for (int i = 0; i < ml.nsample; i++) {
+            if (ml.Counts[i][filter_name] < min_cutoff) {
+              filters_result_fwd = false;
+              break;
+            }
+          }
+          for (int i = 0; i < ml.nsample; i++) {
+            if (ml.counts[i][filter_name] < min_cutoff) {
+              filters_result_rev = false;
               break;
             }
           }
@@ -667,7 +704,7 @@ int main(int argc, char* argv[]) {
         }
       } else {
         bool are_passed = true;
-        for (auto iter = min_cutoffs.begin(); iter != min_cutoffs.end();
+        for (auto iter = any_cutoffs.begin(); iter != any_cutoffs.end();
              ++iter) {
           bool filters_result = false;
           string filter_name = iter->first;
@@ -676,6 +713,20 @@ int main(int argc, char* argv[]) {
             if (ml.Counts[i][filter_name] + ml.counts[i][filter_name] >=
                 min_cutoff) {
               filters_result = true;
+              break;
+            }
+          }
+          are_passed = are_passed && filters_result;
+        }
+        for (auto iter = all_cutoffs.begin(); iter != all_cutoffs.end();
+             ++iter) {
+          bool filters_result = true;
+          string filter_name = iter->first;
+          int min_cutoff = iter->second;
+          for (int i = 0; i < ml.nsample; i++) {
+            if (ml.Counts[i][filter_name] + ml.counts[i][filter_name] <
+                min_cutoff) {
+              filters_result = false;
               break;
             }
           }
