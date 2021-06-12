@@ -98,13 +98,15 @@ class mpileup_line {
   // Counts for different bases
   vector<map<string, int>> Counts, counts, Istats, istats, Dstats, dstats;
   vector<int> depths;
+  vector<string> count_names;
+  //= vector<string>{};
 
   mpileup_line() {
     chr = ref_base = "NA";
     pos = 0;
   }
 
-  static void print_header(
+  void print_header(
       int nsample,
       ostream& out = cout,
       bool stat_indel = false,
@@ -117,16 +119,36 @@ class mpileup_line {
     for (int i = 0; i < nsample; i++) {
       out << sample_sep << "depth";
       if (!hide_strand && !by_strand) {
-        for (int j = 0; j < names_upper.size(); j++) {
-          out << count_sep << names_upper[j];
+        // output header of upper case
+        if (count_names.size() > 0) {
+          for (int j = 0; j < count_names.size(); j++) {
+            string col = count_names[j];
+            std::transform(
+                col.begin(),
+                col.begin() + 1,
+                col.begin(),
+                [](unsigned char c) { return ::toupper(c); });
+            out << count_sep << col;
+          }
+        } else {
+          for (int j = 0; j < names_upper.size(); j++) {
+            out << count_sep << names_upper[j];
+          }
         }
         if (stat_indel) {
           out << count_sep << "Istat";
           out << count_sep << "Dstat";
         }
       }
-      for (int j = 0; j < names.size(); j++) {
-        out << count_sep << names[j];
+      // output header of lower case
+      if (count_names.size() > 0) {
+        for (int j = 0; j < count_names.size(); j++) {
+          out << count_sep << count_names[j];
+        }
+      } else {
+        for (int j = 0; j < names.size(); j++) {
+          out << count_sep << names[j];
+        }
       }
       if (stat_indel) {
         out << count_sep << "istat";
@@ -154,8 +176,15 @@ class mpileup_line {
           map<string, int> M = Counts[i];
           // out << sample_sep << depths[i];
           out << sample_sep << M["coverage"];
-          for (int j = 0; j < names.size(); j++) {
-            out << count_sep << M[names[j]];
+
+          if (count_names.size() > 0) {
+            for (int j = 0; j < count_names.size(); j++) {
+              out << count_sep << M[count_names[j]];
+            }
+          } else {
+            for (int j = 0; j < names.size(); j++) {
+              out << count_sep << M[names[j]];
+            }
           }
           // indel stat
           if (stat_indel) {
@@ -182,8 +211,14 @@ class mpileup_line {
           map<string, int> m = switch_complement_counts(counts[i]);
           // out << sample_sep << depths[i];
           out << sample_sep << m["coverage"];
-          for (int j = 0; j < names.size(); j++) {
-            out << count_sep << m[names[j]];
+          if (count_names.size() > 0) {
+            for (int j = 0; j < count_names.size(); j++) {
+              out << count_sep << m[count_names[j]];
+            }
+          } else {
+            for (int j = 0; j < names.size(); j++) {
+              out << count_sep << m[names[j]];
+            }
           }
           // indel stat
           if (stat_indel) {
@@ -210,8 +245,14 @@ class mpileup_line {
         map<string, int> M = Counts[i];
         map<string, int> m = counts[i];
         out << sample_sep << depths[i];
-        for (int j = 0; j < names.size(); j++) {
-          out << count_sep << M[names[j]] + m[names[j]];
+        if (count_names.size() > 0) {
+          for (int j = 0; j < count_names.size(); j++) {
+            out << count_sep << M[count_names[j]] + m[count_names[j]];
+          }
+        } else {
+          for (int j = 0; j < names.size(); j++) {
+            out << count_sep << M[names[j]] + m[names[j]];
+          }
         }
         // indel stat
         if (stat_indel) {
@@ -251,8 +292,15 @@ class mpileup_line {
       for (int i = 0; i < nsample; i++) {
         out << sample_sep << depths[i];
         map<string, int> M = Counts[i];
-        for (int j = 0; j < names.size(); j++) {
-          out << count_sep << M[names[j]];
+
+        if (count_names.size() > 0) {
+          for (int j = 0; j < count_names.size(); j++) {
+            out << count_sep << M[count_names[j]];
+          }
+        } else {
+          for (int j = 0; j < names.size(); j++) {
+            out << count_sep << M[names[j]];
+          }
         }
         // indel stat
         if (stat_indel) {
@@ -269,8 +317,14 @@ class mpileup_line {
           }
         }
         map<string, int> m = counts[i];
-        for (int j = 0; j < names.size(); j++) {
-          out << count_sep << m[names[j]];
+        if (count_names.size() > 0) {
+          for (int j = 0; j < count_names.size(); j++) {
+            out << count_sep << m[count_names[j]];
+          }
+        } else {
+          for (int j = 0; j < names.size(); j++) {
+            out << count_sep << m[names[j]];
+          }
         }
         // indel stat
         if (stat_indel) {
@@ -554,6 +608,7 @@ int main(int argc, char* argv[]) {
   bool hide_strand = false;
   bool by_strand = false;
   bool major_strand = false;
+  vector<string> count_names = {};
   map<string, int> any_cutoffs;  // check any (max) value greater than cutoff
   map<string, int> all_cutoffs;  // check all (min) value greater than cutoff
   for (int i = 1; i < argc; i++) {
@@ -570,6 +625,11 @@ int main(int argc, char* argv[]) {
       by_strand = true;
     } else if (!strcmp(argv[i], "-m") || !strcmp(argv[i], "--major-strand")) {
       major_strand = true;
+    } else if (!strcmp(argv[i], "-c") || !strcmp(argv[i], "--count")) {
+      if (i + 1 != argc) {
+        count_names = split_string(argv[i + 1], ",");
+      }
+      i++;
     } else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--filter")) {
       // Select when any match
       if (i + 1 != argc) {
@@ -621,12 +681,8 @@ int main(int argc, char* argv[]) {
   if (!hide_header) {
     try {
       mpileup_line ml = process_mpileup_line(line);
-      mpileup_line::print_header(
-          ml.nsample,
-          cout,
-          stat_indel,
-          hide_strand,
-          by_strand);
+      ml.count_names = count_names;
+      ml.print_header(ml.nsample, cout, stat_indel, hide_strand, by_strand);
     } catch (const std::runtime_error& e) {
       cerr << e.what() << endl;
       cerr << "\nError parsing line " << line;
@@ -637,6 +693,7 @@ int main(int argc, char* argv[]) {
   while (cin) {
     try {
       mpileup_line ml = process_mpileup_line(line);
+      ml.count_names = count_names;
       if (by_strand) {
         vector<bool> is_passed = {true, true};
         for (auto iter = any_cutoffs.begin(); iter != any_cutoffs.end();
