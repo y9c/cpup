@@ -67,9 +67,11 @@ void usage() {
       << "  -H, --headerless    hide header" << endl
       << "  -S, --strandless    ignore strand information" << endl
       << "  -s, --by-strand     output by strand" << endl
+      << "  -m, --major-strand  output major strand only" << endl
       << "  -i, --indel         append indel count" << endl
-      << "  -f, --filter        filter sites" << endl
-      << "  -F, --drop          drop sites" << endl;
+      << "  -c, --count []      select count columns" << endl
+      << "  -f, --filter []     filter sites" << endl
+      << "  -F, --drop []       drop sites" << endl;
 }
 
 // global variables
