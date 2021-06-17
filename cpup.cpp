@@ -49,6 +49,7 @@ map<string, int> switch_complement_counts(map<string, int> m) {
       {"g", m["c"]},
       {"t", m["a"]},
       {"n", m["n"]},
+      {"skip", m["skip"]},
       {"gap", m["gap"]},
       {"insert", m["insert"]},
       {"delete", m["delete"]},
@@ -69,15 +70,17 @@ void usage() {
       << "  -s, --by-strand     output by strand" << endl
       << "  -m, --major-strand  output major strand only" << endl
       << "  -i, --indel         append indel count" << endl
+      << "  -e, --ends          append read ends (5' | 3') count" << endl
       << "  -c, --count []      select count columns" << endl
       << "  -f, --filter []     filter sites" << endl
       << "  -F, --drop []       drop sites" << endl;
 }
 
 // global variables
-vector<string> names = {"a", "c", "g", "t", "n", "gap", "insert", "delete"};
+vector<string> names =
+    {"a", "c", "g", "t", "n", "skip", "gap", "insert", "delete"};
 vector<string> names_upper =
-    {"A", "C", "G", "T", "N", "Gap", "Insert", "Delete"};
+    {"A", "C", "G", "T", "N", "Skip", "Gap", "Insert", "Delete"};
 
 string count_sep = ",";
 string indel_sep = "|";
@@ -99,6 +102,7 @@ class mpileup_line {
   string chr, ref_base;
   // Counts for different bases
   vector<map<string, int>> Counts, counts, Istats, istats, Dstats, dstats;
+  vector<int> sstats, estats;
   vector<int> depths;
   vector<string> count_names;
   //= vector<string>{};
@@ -112,6 +116,7 @@ class mpileup_line {
       int nsample,
       ostream& out = cout,
       bool stat_indel = false,
+      bool stat_ends = false,
       bool hide_strand = false,
       bool by_strand = false) {
     out << "chr" << sample_sep << "pos" << sample_sep << "ref_base";
@@ -156,6 +161,10 @@ class mpileup_line {
         out << count_sep << "istat";
         out << count_sep << "dstat";
       }
+      if (stat_ends) {
+        out << count_sep << "sstat";
+        out << count_sep << "estat";
+      }
       if (i < nsample - 1) {
         out << sample_sep;
       }
@@ -166,6 +175,7 @@ class mpileup_line {
   void print_counter(
       ostream& out = cout,
       bool stat_indel = false,
+      bool stat_ends = false,
       bool hide_strand = false,
       bool by_strand = false,
       char strands = '*') {
@@ -258,13 +268,13 @@ class mpileup_line {
         }
         // indel stat
         if (stat_indel) {
-          vector<map<string, int>> indel_stats = {
+          // insersion
+          vector<map<string, int>> insertion_stats = {
               Istats[i],
               istats[i],
-              Dstats[i],
-              dstats[i]};
-          for (auto ids : indel_stats) {
-            map<string, int> ids_no_strand;
+          };
+          map<string, int> insertion_no_strand;
+          for (auto ids : insertion_stats) {
             for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
               string motif = iter->first;
               std::transform(
@@ -272,18 +282,51 @@ class mpileup_line {
                   motif.end(),
                   motif.begin(),
                   [](unsigned char c) { return ::toupper(c); });
-              ids_no_strand[motif] += iter->second;
-            }
-            out << count_sep;
-            for (auto iter = ids_no_strand.begin(); iter != ids_no_strand.end();
-                 ++iter) {
-              if (std::next(iter) != ids_no_strand.end()) {
-                out << iter->first << ':' << iter->second << indel_sep;
-              } else {
-                out << iter->first << ':' << iter->second;
-              }
+              insertion_no_strand[motif] += iter->second;
             }
           }
+          out << count_sep;
+          for (auto iter = insertion_no_strand.begin();
+               iter != insertion_no_strand.end();
+               ++iter) {
+            if (std::next(iter) != insertion_no_strand.end()) {
+              out << iter->first << ':' << iter->second << indel_sep;
+            } else {
+              out << iter->first << ':' << iter->second;
+            }
+          }
+          // deletion
+          vector<map<string, int>> deletion_stats = {
+              Dstats[i],
+              dstats[i],
+          };
+          map<string, int> deletion_no_strand;
+          for (auto ids : deletion_stats) {
+            for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
+              string motif = iter->first;
+              std::transform(
+                  motif.begin(),
+                  motif.end(),
+                  motif.begin(),
+                  [](unsigned char c) { return ::toupper(c); });
+              deletion_no_strand[motif] += iter->second;
+            }
+          }
+          out << count_sep;
+          for (auto iter = deletion_no_strand.begin();
+               iter != deletion_no_strand.end();
+               ++iter) {
+            if (std::next(iter) != deletion_no_strand.end()) {
+              out << iter->first << ':' << iter->second << indel_sep;
+            } else {
+              out << iter->first << ':' << iter->second;
+            }
+          }
+        }
+        // ends stat
+        if (stat_ends) {
+          out << count_sep << sstats[i];
+          out << count_sep << estats[i];
         }
       }
       out << endl;
@@ -355,7 +398,9 @@ tuple<
     map<string, int>,
     map<string, int>,
     map<string, int>,
-    map<string, int>>
+    map<string, int>,
+    int,
+    int>
 parse_counts(string& bases, string& qual) {
   // forward strand
   map<string, int> M{
@@ -367,6 +412,7 @@ parse_counts(string& bases, string& qual) {
       {"g", 0},
       {"t", 0},
       {"n", 0},
+      {"skip", 0},
       {"gap", 0},
       {"insert", 0},
       {"delete", 0},
@@ -381,6 +427,7 @@ parse_counts(string& bases, string& qual) {
       {"g", 0},
       {"t", 0},
       {"n", 0},
+      {"skip", 0},
       {"gap", 0},
       {"insert", 0},
       {"delete", 0},
@@ -389,10 +436,12 @@ parse_counts(string& bases, string& qual) {
   map<string, int> dstat;
   map<string, int> Istat;
   map<string, int> Dstat;
+  int sstat = 0;
+  int estat = 0;
 
   // check if site is a empty (depth == 0)
   if (bases == "*") {
-    return make_tuple(M, m, Istat, istat, Dstat, dstat);
+    return make_tuple(M, m, Istat, istat, Dstat, dstat, sstat, estat);
   }
   for (int i = 0; i < bases.length(); i++) {
     char base = bases[i];
@@ -436,6 +485,13 @@ parse_counts(string& bases, string& qual) {
         break;
       case 'n':
         m["n"] += 1;
+        break;
+      // Reference skips
+      case '>':
+        M["skip"] += 1;
+        break;
+      case '<':
+        m["skip"] += 1;
         break;
       // This base is a gap (--reverse-del suport)
       // similar with Deletecount and deletecount, but with some difference
@@ -483,16 +539,17 @@ parse_counts(string& bases, string& qual) {
         }
         i += indelsize_int - 1;
         break;
-      // Reference skips
-      case '<':
-      case '>':
-        break;
-      // End of read segment
-      case '$':
-        break;
-      // Beginning of read segment, Skip
+      // Beginning of read segment, Skip i and i + 1
+      // The ASCII of the character following `^' minus 33 gives the mapping
+      // quality.
       case '^':
+        sstat += 1;
         i = i + 1;
+        break;
+      // End of read segment, Skip i
+      // A symbol `$' marks the end of a read segment.
+      case '$':
+        estat += 1;
         break;
       default:
         string err = "Unknown ref base: ";
@@ -507,7 +564,7 @@ parse_counts(string& bases, string& qual) {
   m["mut"] = m["a"] + m["c"] + m["g"] + m["t"];
   m["coverage"] = m["ref"] + m["mut"];
 
-  return make_tuple(M, m, Istat, istat, Dstat, dstat);
+  return make_tuple(M, m, Istat, istat, Dstat, dstat, sstat, estat);
 }
 
 // Set the appropriate count for ref nucleotide
@@ -569,7 +626,8 @@ mpileup_line process_mpileup_line(string line) {
       getline(ss, quals, '\t');
 
       map<string, int> Count, count, Istat, istat, Dstat, dstat;
-      tie(Count, count, Istat, istat, Dstat, dstat) =
+      int sstat, estat;
+      tie(Count, count, Istat, istat, Dstat, dstat, sstat, estat) =
           parse_counts(bases, quals);
       Count = fix_ref_counts(Count, ml.ref_base);
       count = fix_ref_counts(count, ml.ref_base);
@@ -580,6 +638,8 @@ mpileup_line process_mpileup_line(string line) {
       ml.istats.push_back(istat);
       ml.Dstats.push_back(Dstat);
       ml.dstats.push_back(dstat);
+      ml.sstats.push_back(sstat);
+      ml.estats.push_back(estat);
       nsample++;
     }
     ncol++;
@@ -606,6 +666,7 @@ vector<string> split_string(const string& i_str, const string& i_delim) {
 
 int main(int argc, char* argv[]) {
   bool hide_header = false;
+  bool stat_ends = false;
   bool stat_indel = false;
   bool hide_strand = false;
   bool by_strand = false;
@@ -621,6 +682,8 @@ int main(int argc, char* argv[]) {
       hide_header = true;
     } else if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indel")) {
       stat_indel = true;
+    } else if (!strcmp(argv[i], "-e") || !strcmp(argv[i], "--ends")) {
+      stat_ends = true;
     } else if (!strcmp(argv[i], "-S") || !strcmp(argv[i], "--strandless")) {
       hide_strand = true;
     } else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--by-strand")) {
@@ -675,6 +738,13 @@ int main(int argc, char* argv[]) {
          << endl;
     return 1;
   }
+  if (!hide_strand and stat_ends) {
+    cerr << "\n"
+            "The `--ends (-e)` parameter must be used together with "
+            "the `--strandless (-S)` parameter"
+         << endl;
+    return 1;
+  }
 
   string line;
   getline(cin, line);
@@ -684,7 +754,13 @@ int main(int argc, char* argv[]) {
     try {
       mpileup_line ml = process_mpileup_line(line);
       ml.count_names = count_names;
-      ml.print_header(ml.nsample, cout, stat_indel, hide_strand, by_strand);
+      ml.print_header(
+          ml.nsample,
+          cout,
+          stat_indel,
+          stat_ends,
+          hide_strand,
+          by_strand);
     } catch (const std::runtime_error& e) {
       cerr << e.what() << endl;
       cerr << "\nError parsing line " << line;
@@ -755,11 +831,29 @@ int main(int argc, char* argv[]) {
           }
         }
         if (is_passed[0] and is_passed[1]) {
-          ml.print_counter(cout, stat_indel, hide_strand, by_strand, '*');
+          ml.print_counter(
+              cout,
+              stat_indel,
+              stat_ends,
+              hide_strand,
+              by_strand,
+              '*');
         } else if (is_passed[0] and !is_passed[1]) {
-          ml.print_counter(cout, stat_indel, hide_strand, by_strand, '+');
+          ml.print_counter(
+              cout,
+              stat_indel,
+              stat_ends,
+              hide_strand,
+              by_strand,
+              '+');
         } else if (!is_passed[0] and is_passed[1]) {
-          ml.print_counter(cout, stat_indel, hide_strand, by_strand, '-');
+          ml.print_counter(
+              cout,
+              stat_indel,
+              stat_ends,
+              hide_strand,
+              by_strand,
+              '-');
         }
       } else {
         bool are_passed = true;
@@ -792,7 +886,7 @@ int main(int argc, char* argv[]) {
           are_passed = are_passed && filters_result;
         }
         if (are_passed) {
-          ml.print_counter(cout, stat_indel, hide_strand, by_strand);
+          ml.print_counter(cout, stat_indel, stat_ends, hide_strand, by_strand);
         }
       }
     } catch (const std::runtime_error& e) {
