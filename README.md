@@ -1,12 +1,42 @@
 # cpup
 
-convert samtools mpileup result into base count tsv
+**Convert samtools mpileup result into base count table**
 
-Feature:
+> Feature:
 
 - multiple bam files are supported
 - filter sites before output
 - output by strandness
+- group and count indels by pattern
+
+## Install
+
+```bash
+git clone git@github.com:y9c/cpup.git
+cd ./cpup
+make
+```
+
+## Usage
+
+Pipe the output of samtools mpileup into this tools!
+
+```
+Usage:
+  samtools mpileup -d 0 -Q 10 --reverse-del -l <.bed> -f <.fa> <.bam> | cpup
+
+  -h, --help          show help
+  -H, --headerless    hide header
+  -S, --strandless    ignore strand information
+  -s, --by-strand     output by strand
+  -m, --major-strand  output major strand only
+  -i, --indel         append indel count
+  -e, --ends          append read ends (5' | 3') count
+  -c, --count []      select count columns
+  -f, --filter []     filter sites
+  -F, --drop []       drop sites
+
+```
 
 `samtools mpileup` can mpileup the mapping result site by site in the format
 below. The 5th (8th, 11st, 14th, ...) column report the observed bases in each site.
@@ -35,35 +65,6 @@ XII     455499  T       -       1496,0,1,12,0,0,250,0,12,,t:7|tt:5      151,0,0,
 XII     455500  A       -       1455,0,2,2,0,0,256,0,0,,        145,0,1,0,0,0,28,0,0,,
 XII     729179  T       +       223,0,3,0,0,0,33,0,0,,  56,0,0,0,0,0,14,0,0,,
 XII     729182  C       +       235,1,0,0,4,0,2,0,0,,   56,0,0,0,0,0,1,0,0,,
-```
-
-## Install
-
-```bash
-git@github.com:y9c/cpup.git
-cd ./cpup
-make
-```
-
-## Usage
-
-Pipe the output of samtools mpileup into this tools!
-
-```
-Usage:
-  samtools mpileup -d 0 -Q 10 --reverse-del -l <.bed> -f <.fa> <.bam> | cpup
-
-  -h, --help          show help
-  -H, --headerless    hide header
-  -S, --strandless    ignore strand information
-  -s, --by-strand     output by strand
-  -m, --major-strand  output major strand only
-  -i, --indel         append indel count
-  -e, --ends          append read ends (5' | 3') count
-  -c, --count []      select count columns
-  -f, --filter []     filter sites
-  -F, --drop []       drop sites
-
 ```
 
 > NOTE:
