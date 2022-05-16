@@ -40,6 +40,8 @@ XII     729182  C       +       235,1,0,0,4,0,2,0,0,,   56,0,0,0,0,0,1,0,0,,
 ## Install
 
 ```bash
+git@github.com:y9c/cpup.git
+cd ./cpup
 make
 ```
 
@@ -83,4 +85,5 @@ Usage:
 `awk` can do it
 
 - samtools mpileup is too slow?
-  `bcftools mpileup` might a better choice, if you are not confusing with tags (`-t AD`, `-t ADF`, `-t ADR`).
+
+`bcftools mpileup` might a better choice, if you are not confusing with tags (`-t AD`, `-t ADF`, `-t ADR`).
