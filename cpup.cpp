@@ -60,7 +60,7 @@ map<string, int> switch_complement_counts(map<string, int> m) {
 void usage() {
   std::cerr
       << "Usage: " << endl
-      << "  samtools mpileup -d 0 -Q 0 --reverse-del -l <.bed> -f <.fa> <.bam>"
+      << "  samtools mpileup -d 0 -Q 10 --reverse-del -l <.bed> -f <.fa> <.bam>"
          " | cpup"
       << endl
       << endl

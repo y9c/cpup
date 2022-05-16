@@ -1,9 +1,12 @@
 # cpup
 
-- convert samtools mpileup result into base count tsv
+convert samtools mpileup result into base count tsv
+
+Feature:
+
 - multiple bam files are supported
-- `bcftools mpileup` might a better choice, if you are not confusing with tags
-  (`-t AD`, `-t ADF`, `-t ADR`).
+- filter sites before output
+- output by strandness
 
 `samtools mpileup` can mpileup the mapping result site by site in the format
 below. The 5th (8th, 11st, 14th, ...) column report the observed bases in each site.
@@ -42,18 +45,32 @@ make
 
 ## Usage
 
-linux pipeline:
+Pipe the output of samtools mpileup into this tools!
 
-```bash
-samtools mpileup -d 0 -Q 0 --reverse-del -l <.bed> -f <.fa> <.bam> | cpup
+```
+Usage:
+  samtools mpileup -d 0 -Q 10 --reverse-del -l <.bed> -f <.fa> <.bam> | cpup
+
+  -h, --help          show help
+  -H, --headerless    hide header
+  -S, --strandless    ignore strand information
+  -s, --by-strand     output by strand
+  -m, --major-strand  output major strand only
+  -i, --indel         append indel count
+  -e, --ends          append read ends (5' | 3') count
+  -c, --count []      select count columns
+  -f, --filter []     filter sites
+  -F, --drop []       drop sites
+
 ```
 
-- `cpup -H` to hide header.
-- `cpup -S` to ignore strand information.
-- `cpup -s` to output by strand.
-- `cpup -i` to append indel count in base count sequence.
-- `cpup -f` to check any (max) value greater than cutoff.
-- `cpup -F` to check all (min) value greater than cutoff.
+> NOTE:
+
+- `-Q` in samtools mpileup should not be set to zero, which might bring bug in counting overlapping reads.
+- `-f` to check **any** (max) value greater than cutoff.
+  eg: `mut:3` for filter sites with **more than or equal to(>=)** 3 mutations in any sample.
+  You can set multile filters, like `mut:3,delete:2` to filter sites with >= 3 mutations in any samples, meanwhile, are should be >=2 delete events.
+- `-F` to check **all** (min) value greater than cutoff.
 
 ## Q&A?
 
@@ -64,3 +81,6 @@ samtools mpileup -d 0 -Q 0 --reverse-del -l <.bed> -f <.fa> <.bam> | cpup
 - filter output site by cutoff?
 
 `awk` can do it
+
+- samtools mpileup is too slow?
+  `bcftools mpileup` might a better choice, if you are not confusing with tags (`-t AD`, `-t ADF`, `-t ADR`).
