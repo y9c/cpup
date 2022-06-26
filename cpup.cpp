@@ -187,7 +187,10 @@ class mpileup_line {
         for (int i = 0; i < nsample; i++) {
           map<string, int> M = Counts[i];
           // out << sample_sep << depths[i];
-          out << sample_sep << M["coverage"];
+          // show depth
+          if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
+            out << sample_sep << M["coverage"];
+          }
 
           if (count_names.size() > 0) {
             for (int j = 0; j < count_names.size(); j++) {
@@ -222,7 +225,10 @@ class mpileup_line {
         for (int i = 0; i < nsample; i++) {
           map<string, int> m = switch_complement_counts(counts[i]);
           // out << sample_sep << depths[i];
-          out << sample_sep << m["coverage"];
+          // show depth
+          if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
+            out << sample_sep << m["coverage"];
+          }
           if (count_names.size() > 0) {
             for (int j = 0; j < count_names.size(); j++) {
               out << count_sep << m[count_names[j]];
@@ -256,7 +262,10 @@ class mpileup_line {
       for (int i = 0; i < nsample; i++) {
         map<string, int> M = Counts[i];
         map<string, int> m = counts[i];
-        out << sample_sep << depths[i];
+        // show depth
+        if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
+          out << sample_sep << depths[i];
+        }
         if (count_names.size() > 0) {
           for (int j = 0; j < count_names.size(); j++) {
             out << count_sep << M[count_names[j]] + m[count_names[j]];
