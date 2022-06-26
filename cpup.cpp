@@ -335,9 +335,13 @@ class mpileup_line {
     else {
       out << chr << sample_sep << pos << sample_sep << ref_base;
       for (int i = 0; i < nsample; i++) {
-        out << sample_sep << depths[i];
-        map<string, int> M = Counts[i];
 
+        // show depth
+        if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
+          out << sample_sep << depths[i];
+        }
+
+        map<string, int> M = Counts[i];
         if (count_names.size() > 0) {
           for (int j = 0; j < count_names.size(); j++) {
             out << count_sep << M[count_names[j]];
