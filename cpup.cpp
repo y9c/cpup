@@ -190,6 +190,8 @@ class mpileup_line {
           // show depth
           if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
             out << sample_sep << M["coverage"];
+          } else {
+            out << sample_sep;
           }
 
           if (count_names.size() > 0) {
@@ -228,6 +230,8 @@ class mpileup_line {
           // show depth
           if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
             out << sample_sep << m["coverage"];
+          } else {
+            out << sample_sep;
           }
           if (count_names.size() > 0) {
             for (int j = 0; j < count_names.size(); j++) {
@@ -265,6 +269,8 @@ class mpileup_line {
         // show depth
         if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
           out << sample_sep << depths[i];
+        } else {
+          out << sample_sep;
         }
         if (count_names.size() > 0) {
           for (int j = 0; j < count_names.size(); j++) {
@@ -348,6 +354,8 @@ class mpileup_line {
         // show depth
         if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
           out << sample_sep << depths[i];
+        } else {
+          out << sample_sep;
         }
 
         map<string, int> M = Counts[i];
