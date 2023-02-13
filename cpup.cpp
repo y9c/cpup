@@ -77,10 +77,10 @@ void usage() {
 }
 
 // global variables
-vector<string> names =
-    {"a", "c", "g", "t", "n", "skip", "gap", "insert", "delete"};
-vector<string> names_upper =
-    {"A", "C", "G", "T", "N", "Skip", "Gap", "Insert", "Delete"};
+vector<string> names = {"a",    "c",   "g",      "t",     "n",
+                        "skip", "gap", "insert", "delete"};
+vector<string> names_upper = {"A",    "C",   "G",      "T",     "N",
+                              "Skip", "Gap", "Insert", "Delete"};
 
 string count_sep = ",";
 string indel_sep = "|";
@@ -97,7 +97,7 @@ inline int str_to_num(string num) {
 
 // DS to hold the pertinent information
 class mpileup_line {
- public:
+public:
   int pos, nsample;
   string chr, ref_base;
   // Counts for different bases
@@ -112,30 +112,31 @@ class mpileup_line {
     pos = 0;
   }
 
-  void print_header(
-      int nsample,
-      ostream& out = cout,
-      bool stat_indel = false,
-      bool stat_ends = false,
-      bool hide_strand = false,
-      bool by_strand = false) {
+  void print_header(int nsample, ostream &out = cout, bool stat_indel = false,
+                    bool stat_ends = false, bool hide_strand = false,
+                    bool by_strand = false) {
     out << "chr" << sample_sep << "pos" << sample_sep << "ref_base";
     if (by_strand) {
       out << sample_sep << "strand";
     }
     for (int i = 0; i < nsample; i++) {
-      out << sample_sep << "depth";
+      if (count_names.size() == 0) {
+        out << sample_sep << "depth";
+      } else {
+        out << sample_sep;
+      }
       if (!hide_strand && !by_strand) {
         // output header of upper case
         if (count_names.size() > 0) {
           for (int j = 0; j < count_names.size(); j++) {
             string col = count_names[j];
-            std::transform(
-                col.begin(),
-                col.begin() + 1,
-                col.begin(),
-                [](unsigned char c) { return ::toupper(c); });
-            out << count_sep << col;
+            std::transform(col.begin(), col.begin() + 1, col.begin(),
+                           [](unsigned char c) { return ::toupper(c); });
+            if (j == 0) {
+              out << col;
+            } else {
+              out << count_sep << col;
+            }
           }
         } else {
           for (int j = 0; j < names_upper.size(); j++) {
@@ -150,7 +151,11 @@ class mpileup_line {
       // output header of lower case
       if (count_names.size() > 0) {
         for (int j = 0; j < count_names.size(); j++) {
-          out << count_sep << count_names[j];
+          if (j == 0) {
+            out << count_names[j];
+          } else {
+            out << count_sep << count_names[j];
+          }
         }
       } else {
         for (int j = 0; j < names.size(); j++) {
@@ -165,20 +170,16 @@ class mpileup_line {
         out << count_sep << "sstat";
         out << count_sep << "estat";
       }
-      if (i < nsample - 1) {
-        out << sample_sep;
-      }
+      // if (i < nsample - 1) {
+      //   out << sample_sep;
+      // }
     }
     out << endl;
   }
 
-  void print_counter(
-      ostream& out = cout,
-      bool stat_indel = false,
-      bool stat_ends = false,
-      bool hide_strand = false,
-      bool by_strand = false,
-      char strands = '*') {
+  void print_counter(ostream &out = cout, bool stat_indel = false,
+                     bool stat_ends = false, bool hide_strand = false,
+                     bool by_strand = false, char strands = '*') {
     // forward strand
     if (by_strand) {
       if (strands == '*' || strands == '+') {
@@ -188,7 +189,7 @@ class mpileup_line {
           map<string, int> M = Counts[i];
           // out << sample_sep << depths[i];
           // show depth
-          if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
+          if (count_names.size() == 0) {
             out << sample_sep << M["coverage"];
           } else {
             out << sample_sep;
@@ -196,7 +197,11 @@ class mpileup_line {
 
           if (count_names.size() > 0) {
             for (int j = 0; j < count_names.size(); j++) {
-              out << count_sep << M[count_names[j]];
+              if (j == 0) {
+                out << M[count_names[j]];
+              } else {
+                out << count_sep << M[count_names[j]];
+              };
             }
           } else {
             for (int j = 0; j < names.size(); j++) {
@@ -228,14 +233,18 @@ class mpileup_line {
           map<string, int> m = switch_complement_counts(counts[i]);
           // out << sample_sep << depths[i];
           // show depth
-          if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
+          if (count_names.size() == 0) {
             out << sample_sep << m["coverage"];
           } else {
             out << sample_sep;
           }
           if (count_names.size() > 0) {
             for (int j = 0; j < count_names.size(); j++) {
-              out << count_sep << m[count_names[j]];
+              if (j == 0) {
+                out << m[count_names[j]];
+              } else {
+                out << count_sep << m[count_names[j]];
+              };
             }
           } else {
             for (int j = 0; j < names.size(); j++) {
@@ -259,7 +268,7 @@ class mpileup_line {
         }
         out << endl;
       }
-    }  // end by_strand
+    } // end by_strand
 
     else if (hide_strand) {
       out << chr << sample_sep << pos << sample_sep << ref_base;
@@ -267,14 +276,18 @@ class mpileup_line {
         map<string, int> M = Counts[i];
         map<string, int> m = counts[i];
         // show depth
-        if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
+        if (count_names.size() == 0) {
           out << sample_sep << depths[i];
         } else {
           out << sample_sep;
         }
         if (count_names.size() > 0) {
           for (int j = 0; j < count_names.size(); j++) {
-            out << count_sep << M[count_names[j]] + m[count_names[j]];
+            if (j == 0) {
+              out << M[count_names[j]] + m[count_names[j]];
+            } else {
+              out << count_sep << M[count_names[j]] + m[count_names[j]];
+            };
           }
         } else {
           for (int j = 0; j < names.size(); j++) {
@@ -292,18 +305,14 @@ class mpileup_line {
           for (auto ids : insertion_stats) {
             for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
               string motif = iter->first;
-              std::transform(
-                  motif.begin(),
-                  motif.end(),
-                  motif.begin(),
-                  [](unsigned char c) { return ::toupper(c); });
+              std::transform(motif.begin(), motif.end(), motif.begin(),
+                             [](unsigned char c) { return ::toupper(c); });
               insertion_no_strand[motif] += iter->second;
             }
           }
           out << count_sep;
           for (auto iter = insertion_no_strand.begin();
-               iter != insertion_no_strand.end();
-               ++iter) {
+               iter != insertion_no_strand.end(); ++iter) {
             if (std::next(iter) != insertion_no_strand.end()) {
               out << iter->first << ':' << iter->second << indel_sep;
             } else {
@@ -319,18 +328,14 @@ class mpileup_line {
           for (auto ids : deletion_stats) {
             for (auto iter = ids.begin(); iter != ids.end(); ++iter) {
               string motif = iter->first;
-              std::transform(
-                  motif.begin(),
-                  motif.end(),
-                  motif.begin(),
-                  [](unsigned char c) { return ::toupper(c); });
+              std::transform(motif.begin(), motif.end(), motif.begin(),
+                             [](unsigned char c) { return ::toupper(c); });
               deletion_no_strand[motif] += iter->second;
             }
           }
           out << count_sep;
           for (auto iter = deletion_no_strand.begin();
-               iter != deletion_no_strand.end();
-               ++iter) {
+               iter != deletion_no_strand.end(); ++iter) {
             if (std::next(iter) != deletion_no_strand.end()) {
               out << iter->first << ':' << iter->second << indel_sep;
             } else {
@@ -345,14 +350,14 @@ class mpileup_line {
         }
       }
       out << endl;
-    }  // end by_strand
+    } // end by_strand
 
     else {
       out << chr << sample_sep << pos << sample_sep << ref_base;
       for (int i = 0; i < nsample; i++) {
 
         // show depth
-        if (count_names.size() == 0 || std::find(count_names.begin(), count_names.end(), "depth") != count_names.end()) {
+        if (count_names.size() == 0) {
           out << sample_sep << depths[i];
         } else {
           out << sample_sep;
@@ -408,50 +413,25 @@ class mpileup_line {
         }
       }
       out << endl;
-    }  // end
+    } // end
   }
 };
 
 // Parse the pileup string
-tuple<
-    map<string, int>,
-    map<string, int>,
-    map<string, int>,
-    map<string, int>,
-    map<string, int>,
-    map<string, int>,
-    int,
-    int>
-parse_counts(string& bases, string& qual) {
+tuple<map<string, int>, map<string, int>, map<string, int>, map<string, int>,
+      map<string, int>, map<string, int>, int, int>
+parse_counts(string &bases, string &qual) {
   // forward strand
   map<string, int> M{
-      {"coverage", 0},
-      {"ref", 0},
-      {"mut", 0},
-      {"a", 0},
-      {"c", 0},
-      {"g", 0},
-      {"t", 0},
-      {"n", 0},
-      {"skip", 0},
-      {"gap", 0},
-      {"insert", 0},
-      {"delete", 0},
+      {"coverage", 0}, {"ref", 0}, {"mut", 0},    {"a", 0},
+      {"c", 0},        {"g", 0},   {"t", 0},      {"n", 0},
+      {"skip", 0},     {"gap", 0}, {"insert", 0}, {"delete", 0},
   };
   // reverse strand
   map<string, int> m{
-      {"coverage", 0},
-      {"ref", 0},
-      {"mut", 0},
-      {"a", 0},
-      {"c", 0},
-      {"g", 0},
-      {"t", 0},
-      {"n", 0},
-      {"skip", 0},
-      {"gap", 0},
-      {"insert", 0},
-      {"delete", 0},
+      {"coverage", 0}, {"ref", 0}, {"mut", 0},    {"a", 0},
+      {"c", 0},        {"g", 0},   {"t", 0},      {"n", 0},
+      {"skip", 0},     {"gap", 0}, {"insert", 0}, {"delete", 0},
   };
   map<string, int> istat;
   map<string, int> dstat;
@@ -470,112 +450,112 @@ parse_counts(string& bases, string& qual) {
     string indelseq;
     int indelsize_int = 0;
     switch (base) {
-      // Match to reference
-      case '.':
-        M["ref"] += 1;
-        break;
-      case ',':
-        m["ref"] += 1;
-        break;
-      case 'A':
-        M["a"] += 1;
-        break;
-      case 'a':
-        m["a"] += 1;
-        break;
-      case 'C':
-        M["c"] += 1;
-        break;
-      case 'c':
-        m["c"] += 1;
-        break;
-      case 'G':
-        M["g"] += 1;
-        break;
-      case 'g':
-        m["g"] += 1;
-        break;
-      case 'T':
-        M["t"] += 1;
-        break;
-      case 't':
-        m["t"] += 1;
-        break;
-      case 'N':
-        M["n"] += 1;
-        break;
-      case 'n':
-        m["n"] += 1;
-        break;
-      // Reference skips
-      case '>':
-        M["skip"] += 1;
-        break;
-      case '<':
-        m["skip"] += 1;
-        break;
-      // This base is a gap (--reverse-del suport)
-      // similar with Deletecount and deletecount, but with some difference
-      case '*':
-        M["gap"] += 1;
-        break;
-      case '#':
-        m["gap"] += 1;
-        break;
-      // Insertion
-      case '+':
-        i++;
-        // 48 is number '0', 57 is number '9'
-        while (bases[i] >= 48 && bases[i] <= 57) {
-          indelsize_string = indelsize_string + bases[i];
-          i = i + 1;
-        }
-        indelsize_int = str_to_num(indelsize_string);
-        indelseq = bases.substr(i, indelsize_int);
-        if (isupper(bases[i])) {
-          M["insert"] += 1;
-          Istat[indelseq]++;
-        } else {
-          m["insert"] += 1;
-          istat[indelseq]++;
-        }
-        i += indelsize_int - 1;
-        break;
-      // Deletion
-      case '-':
-        i++;
-        // 48 is number '0', 57 is number '9'
-        while (bases[i] >= 48 && bases[i] <= 57) {
-          indelsize_string = indelsize_string + bases[i];
-          i = i + 1;
-        }
-        indelsize_int = str_to_num(indelsize_string);
-        indelseq = bases.substr(i, indelsize_int);
-        if (isupper(bases[i])) {
-          M["delete"] += 1;
-          Dstat[indelseq]++;
-        } else {
-          m["delete"] += 1;
-          dstat[indelseq]++;
-        }
-        i += indelsize_int - 1;
-        break;
-      // Beginning of read segment, Skip i and i + 1
-      // The ASCII of the character following `^' minus 33 gives the mapping
-      // quality.
-      case '^':
-        sstat += 1;
+    // Match to reference
+    case '.':
+      M["ref"] += 1;
+      break;
+    case ',':
+      m["ref"] += 1;
+      break;
+    case 'A':
+      M["a"] += 1;
+      break;
+    case 'a':
+      m["a"] += 1;
+      break;
+    case 'C':
+      M["c"] += 1;
+      break;
+    case 'c':
+      m["c"] += 1;
+      break;
+    case 'G':
+      M["g"] += 1;
+      break;
+    case 'g':
+      m["g"] += 1;
+      break;
+    case 'T':
+      M["t"] += 1;
+      break;
+    case 't':
+      m["t"] += 1;
+      break;
+    case 'N':
+      M["n"] += 1;
+      break;
+    case 'n':
+      m["n"] += 1;
+      break;
+    // Reference skips
+    case '>':
+      M["skip"] += 1;
+      break;
+    case '<':
+      m["skip"] += 1;
+      break;
+    // This base is a gap (--reverse-del suport)
+    // similar with Deletecount and deletecount, but with some difference
+    case '*':
+      M["gap"] += 1;
+      break;
+    case '#':
+      m["gap"] += 1;
+      break;
+    // Insertion
+    case '+':
+      i++;
+      // 48 is number '0', 57 is number '9'
+      while (bases[i] >= 48 && bases[i] <= 57) {
+        indelsize_string = indelsize_string + bases[i];
         i = i + 1;
-        break;
-      // End of read segment, Skip i
-      // A symbol `$' marks the end of a read segment.
-      case '$':
-        estat += 1;
-        break;
-      default:
-        string err = "Unknown ref base: ";
-        err += base;
-        throw runtime_error(err);
+      }
+      indelsize_int = str_to_num(indelsize_string);
+      indelseq = bases.substr(i, indelsize_int);
+      if (isupper(bases[i])) {
+        M["insert"] += 1;
+        Istat[indelseq]++;
+      } else {
+        m["insert"] += 1;
+        istat[indelseq]++;
+      }
+      i += indelsize_int - 1;
+      break;
+    // Deletion
+    case '-':
+      i++;
+      // 48 is number '0', 57 is number '9'
+      while (bases[i] >= 48 && bases[i] <= 57) {
+        indelsize_string = indelsize_string + bases[i];
+        i = i + 1;
+      }
+      indelsize_int = str_to_num(indelsize_string);
+      indelseq = bases.substr(i, indelsize_int);
+      if (isupper(bases[i])) {
+        M["delete"] += 1;
+        Dstat[indelseq]++;
+      } else {
+        m["delete"] += 1;
+        dstat[indelseq]++;
+      }
+      i += indelsize_int - 1;
+      break;
+    // Beginning of read segment, Skip i and i + 1
+    // The ASCII of the character following `^' minus 33 gives the mapping
+    // quality.
+    case '^':
+      sstat += 1;
+      i = i + 1;
+      break;
+    // End of read segment, Skip i
+    // A symbol `$' marks the end of a read segment.
+    case '$':
+      estat += 1;
+      break;
+    default:
+      string err = "Unknown ref base: ";
+      err += base;
+      throw runtime_error(err);
     }
   }
 
@@ -589,31 +569,31 @@ parse_counts(string& bases, string& qual) {
 }
 
 // Set the appropriate count for ref nucleotide
-map<string, int> fix_ref_counts(map<string, int> m, string& ref_base) {
+map<string, int> fix_ref_counts(map<string, int> m, string &ref_base) {
   switch (ref_base[0]) {
-    case 'A':
-    case 'a':
-      m["a"] = m["ref"];
-      break;
-    case 'C':
-    case 'c':
-      m["c"] = m["ref"];
-      break;
-    case 'G':
-    case 'g':
-      m["g"] = m["ref"];
-      break;
-    case 'T':
-    case 't':
-      m["t"] = m["ref"];
-      break;
-    case 'N':
-    case 'n':
-      m["n"] = m["ref"];
-      break;
-    // TODO: Deal with -,R,Y,K,M,S,W etc
-    default:
-      break;
+  case 'A':
+  case 'a':
+    m["a"] = m["ref"];
+    break;
+  case 'C':
+  case 'c':
+    m["c"] = m["ref"];
+    break;
+  case 'G':
+  case 'g':
+    m["g"] = m["ref"];
+    break;
+  case 'T':
+  case 't':
+    m["t"] = m["ref"];
+    break;
+  case 'N':
+  case 'n':
+    m["n"] = m["ref"];
+    break;
+  // TODO: Deal with -,R,Y,K,M,S,W etc
+  default:
+    break;
   }
   return m;
 }
@@ -669,7 +649,7 @@ mpileup_line process_mpileup_line(string line) {
   return ml;
 }
 
-vector<string> split_string(const string& i_str, const string& i_delim) {
+vector<string> split_string(const string &i_str, const string &i_delim) {
   vector<string> result;
 
   size_t found = i_str.find(i_delim);
@@ -685,7 +665,7 @@ vector<string> split_string(const string& i_str, const string& i_delim) {
   return result;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   bool hide_header = false;
   bool stat_ends = false;
   bool stat_indel = false;
@@ -693,8 +673,8 @@ int main(int argc, char* argv[]) {
   bool by_strand = false;
   bool major_strand = false;
   vector<string> count_names = {};
-  map<string, int> any_cutoffs;  // check any (max) value greater than cutoff
-  map<string, int> all_cutoffs;  // check all (min) value greater than cutoff
+  map<string, int> any_cutoffs; // check any (max) value greater than cutoff
+  map<string, int> all_cutoffs; // check all (min) value greater than cutoff
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
       usage();
@@ -720,7 +700,7 @@ int main(int argc, char* argv[]) {
       // Select when any match
       if (i + 1 != argc) {
         vector<string> filters = split_string(argv[i + 1], ",");
-        for (auto& s : filters) {
+        for (auto &s : filters) {
           vector<string> filter = split_string(s, ":");
           // mut, ref, coverage, gap...
           string filter_name = filter[0];
@@ -733,7 +713,7 @@ int main(int argc, char* argv[]) {
       // Drop when all match
       if (i + 1 != argc) {
         vector<string> filters = split_string(argv[i + 1], ",");
-        for (auto& s : filters) {
+        for (auto &s : filters) {
           vector<string> filter = split_string(s, ":");
           // mut, ref, coverage, gap...
           string filter_name = filter[0];
@@ -775,14 +755,9 @@ int main(int argc, char* argv[]) {
     try {
       mpileup_line ml = process_mpileup_line(line);
       ml.count_names = count_names;
-      ml.print_header(
-          ml.nsample,
-          cout,
-          stat_indel,
-          stat_ends,
-          hide_strand,
-          by_strand);
-    } catch (const std::runtime_error& e) {
+      ml.print_header(ml.nsample, cout, stat_indel, stat_ends, hide_strand,
+                      by_strand);
+    } catch (const std::runtime_error &e) {
       cerr << e.what() << endl;
       cerr << "\nError parsing line " << line;
     }
@@ -852,29 +827,14 @@ int main(int argc, char* argv[]) {
           }
         }
         if (is_passed[0] and is_passed[1]) {
-          ml.print_counter(
-              cout,
-              stat_indel,
-              stat_ends,
-              hide_strand,
-              by_strand,
-              '*');
+          ml.print_counter(cout, stat_indel, stat_ends, hide_strand, by_strand,
+                           '*');
         } else if (is_passed[0] and !is_passed[1]) {
-          ml.print_counter(
-              cout,
-              stat_indel,
-              stat_ends,
-              hide_strand,
-              by_strand,
-              '+');
+          ml.print_counter(cout, stat_indel, stat_ends, hide_strand, by_strand,
+                           '+');
         } else if (!is_passed[0] and is_passed[1]) {
-          ml.print_counter(
-              cout,
-              stat_indel,
-              stat_ends,
-              hide_strand,
-              by_strand,
-              '-');
+          ml.print_counter(cout, stat_indel, stat_ends, hide_strand, by_strand,
+                           '-');
         }
       } else {
         bool are_passed = true;
@@ -910,7 +870,7 @@ int main(int argc, char* argv[]) {
           ml.print_counter(cout, stat_indel, stat_ends, hide_strand, by_strand);
         }
       }
-    } catch (const std::runtime_error& e) {
+    } catch (const std::runtime_error &e) {
       cerr << e.what() << endl;
       cerr << "\nError parsing line " << line;
       break;
