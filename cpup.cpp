@@ -667,6 +667,8 @@ vector<string> split_string(const string &i_str, const string &i_delim) {
 
 int main(int argc, char *argv[]) {
   bool hide_header = false;
+  bool to_upper = false;
+  bool reverse_strand = false;
   bool stat_ends = false;
   bool stat_indel = false;
   bool hide_strand = false;
@@ -681,6 +683,10 @@ int main(int argc, char *argv[]) {
       return 0;
     } else if (!strcmp(argv[i], "-H") || !strcmp(argv[i], "--headerless")) {
       hide_header = true;
+    } else if (!strcmp(argv[i], "-U") || !strcmp(argv[i], "--toupper")) {
+      to_upper = true;
+    } else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--reverese")) {
+      reverse_strand = true;
     } else if (!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indel")) {
       stat_indel = true;
     } else if (!strcmp(argv[i], "-e") || !strcmp(argv[i], "--ends")) {
@@ -746,6 +752,13 @@ int main(int argc, char *argv[]) {
          << endl;
     return 1;
   }
+  if (!hide_strand and reverse_strand) {
+    cerr << "\n"
+            "The `--reverse (-r)` parameter must be used together with "
+            "the `--strandless (-S)` parameter"
+         << endl;
+    return 1;
+  }
 
   string line;
   getline(cin, line);
@@ -768,6 +781,21 @@ int main(int argc, char *argv[]) {
     try {
       mpileup_line ml = process_mpileup_line(line);
       ml.count_names = count_names;
+      if (to_upper) {
+        std::transform(ml.ref_base.begin(), ml.ref_base.end(),
+                       ml.ref_base.begin(),
+                       [](unsigned char c) { return ::toupper(c); });
+      }
+      if (reverse_strand) {
+        std::transform(ml.ref_base.begin(), ml.ref_base.end(),
+                       ml.ref_base.begin(),
+                       [](unsigned char c) { return basemap[c]; });
+        for (int i = 0; i < ml.nsample; i++) {
+          ml.Counts[i] = switch_complement_counts(ml.Counts[i]);
+          ml.counts[i] = switch_complement_counts(ml.counts[i]);
+          // ml.ref_base = basemap[ml.ref_base[0]];
+        }
+      }
       if (by_strand) {
         vector<bool> is_passed = {true, true};
         for (auto iter = any_cutoffs.begin(); iter != any_cutoffs.end();
