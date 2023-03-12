@@ -147,6 +147,7 @@ public:
           out << count_sep << "Istat";
           out << count_sep << "Dstat";
         }
+        out << count_sep;
       }
       // output header of lower case
       if (count_names.size() > 0) {
@@ -350,7 +351,7 @@ public:
         }
       }
       out << endl;
-    } // end by_strand
+    } // end hide_strand
 
     else {
       out << chr << sample_sep << pos << sample_sep << ref_base;
@@ -363,10 +364,15 @@ public:
           out << sample_sep;
         }
 
+        // show forward strand
         map<string, int> M = Counts[i];
         if (count_names.size() > 0) {
           for (int j = 0; j < count_names.size(); j++) {
-            out << count_sep << M[count_names[j]];
+            if (j == 0) {
+              out << M[count_names[j]];
+            } else {
+              out << count_sep << M[count_names[j]];
+            };
           }
         } else {
           for (int j = 0; j < names.size(); j++) {
@@ -387,6 +393,8 @@ public:
             }
           }
         }
+
+        // show reverse strand
         map<string, int> m = counts[i];
         if (count_names.size() > 0) {
           for (int j = 0; j < count_names.size(); j++) {
