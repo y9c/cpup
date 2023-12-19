@@ -12,7 +12,7 @@
 ## Install
 
 ```bash
-git clone git@github.com:y9c/cpup.git
+git clone https://github.com/y9c/cpup.git
 cd ./cpup
 make
 ```
